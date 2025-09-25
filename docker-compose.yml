@@ -1,0 +1,10 @@
+version: '3.9'
+services:
+  app:
+    build: .
+    volumes:
+      - ./app:/app  # Reflete alterações locais instantaneamente
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=dev

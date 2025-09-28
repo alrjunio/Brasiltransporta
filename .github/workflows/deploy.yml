@@ -24,13 +24,13 @@ jobs:
           echo "🚀 Iniciando deploy..."
           echo "📋 Branch: $GITHUB_REF"
 
-          # Construir e subir containers Docker
+          # Verificar versões do Docker
+          docker --version
+          docker compose version
+
+          # Construir e subir containers Docker (COMANDO CORRETO)
           echo "📦 Construindo containers e subindo..."
           docker compose up -d --build
-
-          # Se quiser subir imagens para Docker Hub:
-          # docker build -t $DOCKERHUB_USERNAME/brasiltransporta-fastapi -f docker/fastapi.Dockerfile .
-          # docker push $DOCKERHUB_USERNAME/brasiltransporta-fastapi
 
           echo "✅ Deploy completado com sucesso!"
           echo "🌐 Aplicação disponível em: https://brasiltransporta.com"

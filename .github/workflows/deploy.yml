@@ -17,6 +17,12 @@ jobs:
         run: |
           echo "✅ Docker já está disponível no runner Ubuntu"
 
+      - name: Install docker-compose explicitly
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
       - name: Deploy with Docker Compose
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -24,13 +30,9 @@ jobs:
           echo "🚀 Iniciando deploy..."
           echo "📋 Branch: $GITHUB_REF"
 
-          # Verificar versões do Docker
-          docker --version
-          docker compose version
-
-          # Construir e subir containers Docker (COMANDO CORRETO)
+          # Construir e subir containers Docker
           echo "📦 Construindo containers e subindo..."
-          docker compose up -d --build
+          docker-compose up -d --build
 
           echo "✅ Deploy completado com sucesso!"
           echo "🌐 Aplicação disponível em: https://brasiltransporta.com"

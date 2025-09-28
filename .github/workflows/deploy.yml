@@ -17,23 +17,16 @@ jobs:
         run: |
           echo "✅ Docker já está disponível no runner Ubuntu"
 
-      - name: Deploy with PowerShell
-        shell: pwsh
+      - name: Deploy with Docker Compose
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          Write-Host "🚀 Iniciando deploy..."
-          
-          # Verificar branch
-          Write-Host "📋 Branch: $env:GITHUB_REF"
+          echo "🚀 Iniciando deploy..."
+          echo "📋 Branch: $GITHUB_REF"
           
           # Construir e subir containers Docker
-          Write-Host "📦 Construindo imagens e subindo containers..."
+          echo "📦 Construindo imagens e subindo containers..."
           docker compose up -d --build
           
-          # Se usar push para Docker Hub:
-          # docker build -t $env:DOCKERHUB_USERNAME/brasiltransporta-fastapi -f docker/fastapi.Dockerfile .
-          # docker push $env:DOCKERHUB_USERNAME/brasiltransporta-fastapi
-          
-          Write-Host "✅ Deploy completado com sucesso!"
-          Write-Host "🌐 Aplicação disponível em: https://brasiltransporta.com"
+          echo "✅ Deploy completado com sucesso!"
+          echo "🌐 Aplicação disponível em: https://brasiltransporta.com"

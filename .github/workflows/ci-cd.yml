@@ -93,5 +93,5 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "🚀 Iniciando deploy..."
-          docker-compose up -d --build
+          docker compose up -d --build
           Write-Host "✅ Deploy concluído!"

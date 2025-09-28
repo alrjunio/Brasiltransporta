@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: windows-latest  # Usando Windows para PowerShell
+    runs-on: ubuntu-latest
     
     services:
       postgres:
@@ -55,7 +55,7 @@ jobs:
         Write-Host "✅ Todos os testes passaram!"
 
   code-quality:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v4

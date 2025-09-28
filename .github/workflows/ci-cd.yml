@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Linux runner
 
     services:
       postgres:
@@ -27,7 +27,8 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -48,14 +49,15 @@ jobs:
           SECRET_KEY: test-secret-key
         run: |
           Write-Host "🎯 Executando testes..."
-          python -m pytest ./backend/tests/ -v
+          python -m pytest -v
           Write-Host "✅ Execução de testes finalizada!"
 
   code-quality:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -71,8 +73,25 @@ jobs:
           Write-Host "📝 Verificando formatação com Black..."
           black --check backend/
           if ($LASTEXITCODE -ne 0) {
-              Write-Warning "⚠️  Código precisa de formatação. Execute: black backend/"
+              Write-Warning "⚠️ Código precisa de formatação. Execute: black backend/"
           }
 
           Write-Host "🔎 Verificando com Flake8..."
-          flake8 backend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
+          flake8 backend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+          Write-Host "✅ Análise de qualidade completada!"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, code-quality]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Docker Compose
+        shell: pwsh
+        run: |
+          Write-Host "🚀 Iniciando deploy..."
+          docker-compose up -d --build
+          Write-Host "✅ Deploy concluído!"

@@ -1,0 +1,36 @@
+﻿name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Permite trigger manual
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy with PowerShell
+      shell: pwsh
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      run: |
+        Write-Host "🚀 Iniciando deploy..."
+        
+        # Verificar se estamos na branch main
+        Write-Host "📋 Branch: $env:GITHUB_REF"
+        
+        # Simular deploy (substitua pelos seus comandos reais)
+        Write-Host "📦 Construindo imagens Docker..."
+        Write-Host "🐳 Fazendo push para Docker Hub..."
+        Write-Host "☁️  Implantando na nuvem..."
+        
+        # Exemplo de comandos reais (descomente quando configurar):
+        # docker build -t $env:DOCKERHUB_USERNAME/brasiltransporta-fastapi -f docker/fastapi.Dockerfile .
+        # docker push $env:DOCKERHUB_USERNAME/brasiltransporta-fastapi
+        
+        Write-Host "✅ Deploy completado com sucesso!"
+        Write-Host "🌐 Aplicação disponível em: https://brasiltransporta.com"

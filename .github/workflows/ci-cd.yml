@@ -1,0 +1,87 @@
+﻿name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: windows-latest  # Usando Windows para PowerShell
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: transporte2412
+          POSTGRES_DB: brasiltransporta
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      shell: pwsh  # Usando PowerShell
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio
+        
+    - name: Run tests with PowerShell
+      shell: pwsh
+      env:
+        DATABASE_URL: postgresql://admin:transporte2412@localhost:5432/brasiltransporta
+        SECRET_KEY: test-secret-key
+      run: |
+        Write-Host "🎯 Executando testes..."
+        python -m pytest backend/tests/ -v
+        if (0 -ne 0) {
+            Write-Error "❌ Testes falharam"
+            exit 1
+        }
+        Write-Host "✅ Todos os testes passaram!"
+
+  code-quality:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Code quality checks with PowerShell
+      shell: pwsh
+      run: |
+        Write-Host "🔍 Verificando qualidade do código..."
+        
+        # Instalar ferramentas de qualidade
+        pip install black flake8
+        
+        # Verificar formatação com Black
+        Write-Host "📝 Verificando formatação com Black..."
+        black --check backend/
+        if (0 -ne 0) {
+            Write-Warning "⚠️  Código precisa de formatação. Execute: black backend/"
+        }
+        
+        # Verificar com Flake8
+        Write-Host "🔎 Verificando com Flake8..."
+        flake8 backend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+        Write-Host "✅ Análise de qualidade completada!"

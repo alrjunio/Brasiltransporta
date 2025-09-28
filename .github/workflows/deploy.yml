@@ -3,30 +3,37 @@
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Permite trigger manual
+  workflow_dispatch:  # Permite disparo manual
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest   # ✅ Alterado para Linux para compatibilidade Docker
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
+      # 1️⃣ Pegar o código do repositório
       - uses: actions/checkout@v4
 
-      - name: Set up Docker
+      # 2️⃣ Login no Docker Hub
+      - name: Login to Docker Hub
         run: |
-          echo "✅ Docker já está disponível no runner Ubuntu"
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+      # 3️⃣ Build e deploy com Docker Compose
       - name: Deploy with Docker Compose
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           echo "🚀 Iniciando deploy..."
           echo "📋 Branch: $GITHUB_REF"
           
-          # Construir e subir containers Docker
-          echo "📦 Construindo imagens e subindo containers..."
+          echo "📦 Construindo containers e subindo..."
           docker compose up -d --build
           
           echo "✅ Deploy completado com sucesso!"
           echo "🌐 Aplicação disponível em: https://brasiltransporta.com"
+
+      # 4️⃣ (Opcional) Push das imagens para Docker Hub
+      # - name: Push Docker Images
+      #   run: |
+      #     docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/brasiltransporta-fastapi -f docker/fastapi.Dockerfile .
+      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/brasiltransporta-fastapi
+      

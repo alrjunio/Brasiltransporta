@@ -3,13 +3,13 @@
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Permite trigger manual
+  workflow_dispatch:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest   # ✅ Linux para compatibilidade Docker
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +28,7 @@ jobs:
           echo "📦 Construindo containers e subindo..."
           docker compose up -d --build
 
-          # Exemplo de push para Docker Hub (opcional)
+          # Se quiser subir imagens para Docker Hub:
           # docker build -t $DOCKERHUB_USERNAME/brasiltransporta-fastapi -f docker/fastapi.Dockerfile .
           # docker push $DOCKERHUB_USERNAME/brasiltransporta-fastapi
 

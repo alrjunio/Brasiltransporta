@@ -2,27 +2,23 @@
 
 WORKDIR /app
 
-# Instalar dependências do sistema - usar libpq-dev CORRETO
+# Dependências nativas (psycopg2 precisa de libpq-dev)
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements
+# Dependências Python
 COPY requirements.txt .
-
-# Instalar dependências Python
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código da aplicação
-COPY backend/ ./backend/
+# Copiar o projeto inteiro (inclui brasiltransporta/, docker/, etc.)
+COPY . /app
 
-# Expor porta
+# Garantir que o pacote "brasiltransporta" seja resolvido como módulo
+ENV PYTHONPATH=/app
+
 EXPOSE 8000
 
-# Definindo backend no PYTHONPATH
-ENV PYTHONPATH=/app/backend
-
-# Comando para rodar a aplicação
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "brasiltransporta.presentation.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

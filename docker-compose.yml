@@ -1,44 +1,7 @@
-version: "3.9"
-
 services:
-  fastapi_app:
-    build:
-      context: .
-      dockerfile: docker/fastapi.Dockerfile
-    container_name: fastapi_app
-    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./backend:/app/backend
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres_db
-      - redis
-      - rabbitmq
-    environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
-
-  worker:
-    build:
-      context: .
-      dockerfile: docker/worker.Dockerfile
-    container_name: worker
-    depends_on:
-      - fastapi_app
-      - redis
-      - rabbitmq
-    environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
-    command: celery -A backend.app.worker.celery_app worker --loglevel=info
-
   postgres_db:
     image: postgres:15
     container_name: postgres_db
-    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -60,6 +23,25 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+
+  fastapi_app:
+    build:
+      context: .
+      dockerfile: docker/fastapi.Dockerfile
+    container_name: fastapi_app
+    command: uvicorn brasiltransporta.presentation.api.app:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./:/app
+    ports:
+      - "8001:8000"   # host:container (use 8001 no host para evitar conflito)
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
+    depends_on:
+      - postgres_db
+      - redis
+      - rabbitmq
 
 volumes:
   brasiltransporta_pgdata:

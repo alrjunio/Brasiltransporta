@@ -1,8 +1,10 @@
-﻿[tool.poetry]
+[tool.poetry]
 name = "brasiltransporta"
 version = "0.1.0"
 description = "Projeto Brasiltransporta usando Poetry + Docker"
 authors = ["Antonio Junior <seu-email@exemplo.com>"]
+package-mode = false
+
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -28,3 +30,4 @@ flake8 = "^6.0.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+

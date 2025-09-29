@@ -9,6 +9,7 @@ from brasiltransporta.infrastructure.security.password_hasher import (
     BcryptPasswordHasher,
 )
 
+from brasiltransporta.application.users.use_cases.get_user_by_id import GetUserByIdUseCase
 
 def get_register_user_uc() -> RegisterUserUseCase:
     """
@@ -20,5 +21,9 @@ def get_register_user_uc() -> RegisterUserUseCase:
     hasher = BcryptPasswordHasher()
     return RegisterUserUseCase(users=repo, hasher=hasher)
 
+def get_user_by_id_uc() -> GetUserByIdUseCase:
+    session = get_session()
+    repo = SQLAlchemyUserRepository(session)
+    return GetUserByIdUseCase(users=repo)
 
-from brasiltransporta.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+

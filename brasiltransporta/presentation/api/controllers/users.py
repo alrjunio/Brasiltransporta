@@ -29,7 +29,7 @@ def register(
     payload: RegisterUserRequest,
     uc: RegisterUserUseCase = Depends(get_register_user_uc),
 ):
-    out = uc.execute(RegisterUserInput(**payload.dict()))
+    out = uc.execute(RegisterUserInput(**payload.model_dump()))
     return RegisterUserResponse(id=out.user_id)
 
 

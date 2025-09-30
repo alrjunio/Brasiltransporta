@@ -243,3 +243,69 @@ docs/api/ - Especificação completa da API
 docs/architecture/ - Diagramas de arquitetura
 
 docs/deployment/ - Guias de deploy
+
+
+---
+
+## (D) Conclusão rápida
+
+- **Entidades (domínio):** ✅ (todas definidas)  
+- **Migrations:** 🟨 (falta criar para store/vehicle/advertisement/plan/transaction — arquivos acima resolvem)  
+- **ER diagram:** ⛔ (Mermaid acima resolve)  
+- **README com modelo:** ⛔ (trecho acima resolve)
+
+Se você quiser, após criar os models e rodar a migração, eu já te passo os **endpoints básicos** (CRUD mínimo) e **tests E2E** para Stores/Ads, seguindo o mesmo padrão de Users.
+
+Table users {
+  id uuid [pk]
+  name varchar(120) [not null]
+  email varchar(255) [not null, unique]
+  password_hash varchar(255) [not null]
+  region varchar(50) [not null]
+}
+
+Table stores {
+  id uuid [pk]
+  name varchar(120) [not null]
+  owner_user_id uuid [not null, ref: > users.id]
+}
+
+## Modelo de Dados (atual)
+
+Hoje temos as tabelas **users** e **stores**:
+
+- **users**
+  - `id` (UUID, PK)
+  - `name` (varchar(120), obrigatório)
+  - `email` (varchar(255), **único**, obrigatório)
+  - `password_hash` (varchar(255), obrigatório)
+  - `region` (varchar(50), obrigatório)
+
+- **stores**
+  - `id` (UUID, PK)
+  - `name` (varchar(120), obrigatório)
+  - `owner_user_id` (UUID, FK → `users.id`, obrigatório)
+
+Relacionamento principal:
+
+- 1 usuário **possui** N lojas (`users.id` → `stores.owner_user_id`).
+
+### Diagrama (Mermaid)
+
+```mermaid
+erDiagram
+    USERS {
+      uuid id PK
+      string name
+      string email "UNIQUE"
+      string password_hash
+      string region
+    }
+
+    STORES {
+      uuid id PK
+      string name
+      uuid owner_user_id FK
+    }
+
+    USERS ||--o{ STORES : "owns"

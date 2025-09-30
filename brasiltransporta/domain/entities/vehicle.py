@@ -1,12 +1,23 @@
+# domain/entities/vehicle.py
 from dataclasses import dataclass
 from uuid import uuid4
-from brasiltransporta.domain.value_objects.vehicle_specs import VehicleSpecs
 
 @dataclass
 class Vehicle:
     id: str
-    specs: VehicleSpecs
+    store_id: str
+    brand: str
+    model: str
+    year: int
+    plate: str
 
     @classmethod
-    def create(cls, specs: VehicleSpecs) -> "Vehicle":
-        return cls(id=str(uuid4()), specs=specs)
+    def create(cls, store_id: str, brand: str, model: str, year: int, plate: str) -> "Vehicle":
+        return cls(
+            id=str(uuid4()),
+            store_id=store_id,
+            brand=brand.strip(),
+            model=model.strip(),
+            year=year,
+            plate=plate.upper().strip()
+        )

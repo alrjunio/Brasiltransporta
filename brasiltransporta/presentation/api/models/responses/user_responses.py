@@ -1,13 +1,14 @@
+from uuid import UUID
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
 class RegisterUserResponse(BaseModel):
-    id: str
+    id: UUID
 
 
 class UserDetailResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     email: EmailStr
     phone: Optional[str] = None

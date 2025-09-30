@@ -19,17 +19,13 @@ class SQLAlchemyUserRepository(UserRepository):
 
     # ------- comandos -------
 
-    def add(self, user: User) -> None:
+    def add(self, user: User) -> User:
         model = UserModel.from_domain(user)
         self._session.add(model)
-        try:
-            # flush para materializar possíveis constraints antes do commit (ex.: unique)
-            self._session.flush()
-            self._session.commit()
-        except IntegrityError as e:
-            self._session.rollback()
-            # Ex.: violação de uq_user_email -> traduz para erro de domínio (422 via FastAPI)
-            raise ValidationError("E-mail já cadastrado.") from e
+        self._session.flush()   # garante PK gerada
+        self._session.refresh(model)
+        self._session.commit() 
+        return model.to_domain()
 
     # ------- consultas -------
 
@@ -39,6 +35,10 @@ class SQLAlchemyUserRepository(UserRepository):
         return row.to_domain() if row else None
 
     def get_by_email(self, email: str) -> Optional[User]:
+        email_str = (
+        email if isinstance(email, str)
+        else getattr(email, "value", str(email))
+    )
         stmt = select(UserModel).where(UserModel.email == email.lower())
         row = self._session.execute(stmt).scalar_one_or_none()
         return row.to_domain() if row else None
@@ -47,3 +47,4 @@ class SQLAlchemyUserRepository(UserRepository):
         stmt = select(UserModel).where(UserModel.region == region).limit(limit)
         rows = self._session.execute(stmt).scalars().all()
         return [m.to_domain() for m in rows]
+

@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-# Carrega logging do alembic.ini (se houver)
+# === Carrega logging do alembic.ini (se houver) ===
 config = context.config
 if config.config_file_name is not None:
     try:
@@ -12,7 +12,6 @@ if config.config_file_name is not None:
     except Exception:
         # Se faltar seções de logging no alembic.ini, seguimos sem configurar logging
         pass
-
 
 
 def _database_url() -> str:
@@ -34,10 +33,18 @@ def _database_url() -> str:
 
 
 # ===== Metadata dos modelos do projeto =====
-# Importa a Base e garante que os modelos sejam importados para popular o metadata.
+# Importe a Base e, em seguida, TODOS os módulos de modelos para popular o metadata.
 from brasiltransporta.infrastructure.persistence.sqlalchemy.models.base import Base  # noqa: E402
-# Importe todos os módulos de modelos aqui para o autogenerate "enxergar" as tabelas:
-from brasiltransporta.infrastructure.persistence.sqlalchemy.models import user  # noqa: F401,E402
+
+# Importações de modelos (garantem que tabelas/FKs apareçam no autogenerate)
+# Atenção à ordem: se "stores" referencia "users", importe "user" primeiro.
+from brasiltransporta.infrastructure.persistence.sqlalchemy.models import user as user_model  # noqa: F401,E402
+# À medida que você criar os próximos modelos, descomente/adicione aqui:
+# from brasiltransporta.infrastructure.persistence.sqlalchemy.models import store  # noqa: F401,E402
+# from brasiltransporta.infrastructure.persistence.sqlalchemy.models import vehicle  # noqa: F401,E402
+# from brasiltransporta.infrastructure.persistence.sqlalchemy.models import advertisement  # noqa: F401,E402
+# from brasiltransporta.infrastructure.persistence.sqlalchemy.models import plan  # noqa: F401,E402
+# from brasiltransporta.infrastructure.persistence.sqlalchemy.models import transaction  # noqa: F401,E402
 
 target_metadata = Base.metadata
 

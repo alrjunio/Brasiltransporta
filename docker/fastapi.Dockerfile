@@ -16,6 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar o projeto inteiro (inclui brasiltransporta/, docker/, etc.)
 COPY . /app
 
+# Copia scripts de inicialização
+COPY docker/entrypoint.sh /app/docker/entrypoint.sh
+COPY docker/wait_for_db.py /app/docker/wait_for_db.py
+RUN chmod +x /app/docker/entrypoint.sh
+
 # Garantir que o pacote "brasiltransporta" seja resolvido como módulo
 ENV PYTHONPATH=/app
 

@@ -23,6 +23,10 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
+    env:
+      DATABASE_URL: postgresql://app:app@localhost:5432/app
+      PYTHONPATH: ${{ github.workspace }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -38,20 +42,25 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
-          else
-            echo "requirements.txt não encontrado; instalando pacote local (se existir)"
-            pip install -e .
           fi
 
-      - name: (Opcional) Rodar migrações Alembic
+      - name: Install project (editable)
+        run: pip install -e .
+
+      - name: Sanity import
+        run: |
+          python - << 'PY'
+          import importlib, sys
+          print("sys.path[0]:", sys.path[0])
+          m = importlib.import_module("brasiltransporta")
+          print("brasiltransporta module:", getattr(m, "__file__", "(namespace package)"))
+          PY
+
+      - name: (Optional) Alembic migrations
         run: |
           if command -v alembic >/dev/null 2>&1; then
             alembic -c alembic.ini upgrade head || true
           fi
-        env:
-          DATABASE_URL: postgresql://app:app@localhost:5432/app
 
       - name: Pytest
         run: pytest -q
-        env:
-          DATABASE_URL: postgresql://app:app@localhost:5432/app

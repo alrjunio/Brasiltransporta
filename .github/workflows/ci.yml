@@ -44,23 +44,14 @@ jobs:
             pip install -r requirements.txt
           fi
 
-      - name: Install project (editable)
-        run: pip install -e .
-
       - name: Sanity import
         run: |
           python - << 'PY'
           import importlib, sys
           print("sys.path[0]:", sys.path[0])
           m = importlib.import_module("brasiltransporta")
-          print("brasiltransporta module:", getattr(m, "__file__", "(namespace package)"))
+          print("brasiltransporta module:", getattr(m, "__file__", "(package ok)"))
           PY
-
-      - name: (Optional) Alembic migrations
-        run: |
-          if command -v alembic >/dev/null 2>&1; then
-            alembic -c alembic.ini upgrade head || true
-          fi
 
       - name: Pytest
         run: pytest -q

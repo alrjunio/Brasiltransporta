@@ -1,7 +1,7 @@
 # tests/domain/entities/test_transaction.py
 import pytest
 from brasiltransporta.domain.entities.transaction import Transaction, TransactionStatus, PaymentMethod
-
+from brasiltransporta.domain.errors import ValidationError
 
 class TestTransaction:
     def test_create_transaction_success(self):
@@ -17,7 +17,7 @@ class TestTransaction:
         assert transaction.id is not None
         assert transaction.user_id == "user-123"
         assert transaction.plan_id == "plan-456"
-        assert transaction.amount == 199.90
+        assert transaction.amount.amount == 199.90
         assert transaction.payment_method == PaymentMethod.CREDIT_CARD
         assert transaction.status == TransactionStatus.PENDING
         assert transaction.external_payment_id is None
@@ -25,7 +25,7 @@ class TestTransaction:
 
     def test_create_transaction_invalid_amount(self):
         """Testa criação com valor inválido"""
-        with pytest.raises(ValueError, match="Valor da transação deve ser maior que zero"):
+        with pytest.raises(ValidationError, match="Valor da transação deve ser maior que zero"):
             Transaction.create(
                 user_id="user-123",
                 plan_id="plan-456",
@@ -83,5 +83,5 @@ class TestTransaction:
             payment_method=PaymentMethod.CREDIT_CARD
         )
         
-        with pytest.raises(ValueError, match="Apenas transações completadas podem ser reembolsadas"):
+        with pytest.raises(ValidationError, match="Apenas transações completadas podem ser reembolsadas"):
             transaction.refund()

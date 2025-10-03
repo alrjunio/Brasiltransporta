@@ -7,7 +7,7 @@ from brasiltransporta.main import app
 class TestAdvertisementRoutes:
     def test_create_advertisement_success(self, client):
         """Testa criação bem-sucedida de anúncio via API"""
-        with patch('brasiltransporta.presentation.api.routes.advertisements.get_create_advertisement_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.advertisements.get_create_advertisement_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.return_value = Mock(advertisement_id="adv-123")
             mock_uc.return_value = mock_use_case
@@ -28,7 +28,7 @@ class TestAdvertisementRoutes:
 
     def test_create_advertisement_validation_error(self, client):
         """Testa criação de anúncio com erro de validação"""
-        with patch('brasiltransporta.presentation.api.routes.advertisements.get_create_advertisement_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.advertisements.get_create_advertisement_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.side_effect = Exception("Erro de validação")
             mock_uc.return_value = mock_use_case
@@ -47,7 +47,7 @@ class TestAdvertisementRoutes:
 
     def test_get_advertisement_success(self, client):
         """Testa busca bem-sucedida de anúncio via API"""
-        with patch('brasiltransporta.presentation.api.routes.advertisements.get_get_advertisement_by_id_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.advertisements.get_get_advertisement_by_id_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.return_value = Mock(
                 id="adv-123",
@@ -73,7 +73,7 @@ class TestAdvertisementRoutes:
 
     def test_get_advertisement_not_found(self, client):
         """Testa busca de anúncio não encontrado via API"""
-        with patch('brasiltransporta.presentation.api.routes.advertisements.get_get_advertisement_by_id_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.advertisements.get_get_advertisement_by_id_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.return_value = None
             mock_uc.return_value = mock_use_case
@@ -85,7 +85,7 @@ class TestAdvertisementRoutes:
 class TestPlanRoutes:
     def test_create_plan_success(self, client):
         """Testa criação bem-sucedida de plano via API"""
-        with patch('brasiltransporta.presentation.api.routes.plans.get_create_plan_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.plans.get_create_plan_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.return_value = Mock(plan_id="plan-123")
             mock_uc.return_value = mock_use_case
@@ -108,7 +108,7 @@ class TestPlanRoutes:
 
     def test_list_plans_success(self, client):
         """Testa listagem bem-sucedida de planos via API"""
-        with patch('brasiltransporta.presentation.api.routes.plans.get_list_active_plans_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.plans.get_list_active_plans_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.return_value = Mock(plans=[
                 Mock(
@@ -149,7 +149,7 @@ class TestPlanRoutes:
 class TestTransactionRoutes:
     def test_create_transaction_success(self, client):
         """Testa criação bem-sucedida de transação via API"""
-        with patch('brasiltransporta.presentation.api.routes.transactions.get_create_transaction_uc') as mock_uc:
+        with patch('brasiltransporta.presentation.api.controllers.transactions.get_create_transaction_uc') as mock_uc:
             mock_use_case = Mock()
             mock_use_case.execute.return_value = Mock(transaction_id="trans-123")
             mock_uc.return_value = mock_use_case

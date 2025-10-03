@@ -1,0 +1,3 @@
+# compat para testes legados
+from .create_transaction import CreateTransactionUseCase, CreateTransactionInput, CreateTransactionOutput
+from .get_transaction_by_id import GetTransactionByIdUseCase, TransactionDetailOutput

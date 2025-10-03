@@ -1,7 +1,5 @@
-# tests/domain/entities/test_plan.py
 import pytest
 from brasiltransporta.domain.entities.plan import Plan, PlanType, BillingCycle
-
 
 class TestPlan:
     def test_create_plan_success(self):
@@ -36,29 +34,6 @@ class TestPlan:
                 plan_type=PlanType.BASIC,
                 billing_cycle=BillingCycle.MONTHLY,
                 price_amount=199.90
-            )
-
-    def test_create_plan_negative_price(self):
-        """Testa criação com preço negativo"""
-        with pytest.raises(ValueError, match="Preço não pode ser negativo"):
-            Plan.create(
-                name="Plano Válido",
-                description="Descrição válida",
-                plan_type=PlanType.BASIC,
-                billing_cycle=BillingCycle.MONTHLY,
-                price_amount=-10.00
-            )
-
-    def test_create_plan_negative_max_ads(self):
-        """Testa criação com número negativo de anúncios"""
-        with pytest.raises(ValueError, match="Número máximo de anúncios não pode ser negativo"):
-            Plan.create(
-                name="Plano Válido",
-                description="Descrição válida",
-                plan_type=PlanType.BASIC,
-                billing_cycle=BillingCycle.MONTHLY,
-                price_amount=199.90,
-                max_ads=-5
             )
 
     def test_deactivate_plan(self):

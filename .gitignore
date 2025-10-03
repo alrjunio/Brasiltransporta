@@ -64,3 +64,4 @@ htmlcov/
 .coverage
 .coverage.*
 .coverage
+.pytest_cache/

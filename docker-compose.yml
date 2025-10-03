@@ -1,52 +1,24 @@
-version: "3.9"
+# docker-compose.yml
+# Removido o campo "version" (obsoleto nas versões recentes do Compose)
 
 services:
-  fastapi_app:
-    build:
-      context: .
-      dockerfile: docker/fastapi.Dockerfile
-    container_name: fastapi_app
-    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./backend:/app/backend
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres_db
-      - redis
-      - rabbitmq
-    environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
-
-  worker:
-    build:
-      context: .
-      dockerfile: docker/worker.Dockerfile
-    container_name: worker
-    depends_on:
-      - fastapi_app
-      - redis
-      - rabbitmq
-    environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
-    command: celery -A backend.app.worker.celery_app worker --loglevel=info
-
   postgres_db:
     image: postgres:15
     container_name: postgres_db
-    restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: brasiltransporta
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-brasiltransporta}
     ports:
       - "5432:5432"
     volumes:
       - brasiltransporta_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-brasiltransporta}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   redis:
     image: redis:7
@@ -58,8 +30,56 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # UI de gerenciamento
+
+  fastapi_app:
+    build:
+      context: .
+      dockerfile: docker/fastapi.Dockerfile
+    container_name: fastapi_app
+    env_file:
+      - .env
+    environment:
+      # Defaults sensatos para rodar em Compose; .env pode sobrescrever
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672//}
+    volumes:
+      - ./:/app
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    entrypoint: ["/app/docker/entrypoint.sh"]
+    command: uvicorn brasiltransporta.presentation.api.app:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+
+  # Opcional: worker Celery (se você já usa)
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/worker.Dockerfile
+  #   container_name: worker
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta}
+  #     REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  #     RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672//}
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     postgres_db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_started
+  #     rabbitmq:
+  #       condition: service_started
+  #   entrypoint: ["/app/docker/entrypoint.sh"]
+  #   command: celery -A brasiltransporta.infrastructure.messaging.tasks worker --loglevel=info
+  #   restart: unless-stopped
 
 volumes:
   brasiltransporta_pgdata:

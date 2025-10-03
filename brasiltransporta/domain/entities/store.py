@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import uuid4
+from typing import Optional
+
 
 @dataclass
 class Store:
@@ -8,7 +10,7 @@ class Store:
     name: str
     owner_id: str
     created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime | None = None
+    updated_at: Optional[datetime] = None
 
     @classmethod
     def create(cls, name: str, owner_id: str) -> "Store":

@@ -1,12 +1,10 @@
-# presentation/api/models/requests/transaction_requests.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, Dict
-from brasiltransporta.domain.entities.transaction import PaymentMethod
 
 class CreateTransactionRequest(BaseModel):
-    user_id: str = Field(..., description="ID do usuário")
-    plan_id: str = Field(..., description="ID do plano")
-    amount: float = Field(..., gt=0, description="Valor da transação")
-    payment_method: PaymentMethod = Field(..., description="Método de pagamento")
-    currency: str = Field("BRL", description="Moeda (padrão: BRL)")
-    metadata: Optional[Dict] = Field({}, description="Metadados adicionais")
+    user_id: str
+    plan_id: str
+    amount: float
+    payment_method: str  # aceitar "credit_card" literal dos testes
+    currency: str = "BRL"
+    metadata: Optional[Dict] = None

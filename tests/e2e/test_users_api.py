@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 
 from brasiltransporta.presentation.api.app import app
 from brasiltransporta.infrastructure.persistence.sqlalchemy.session import engine, get_session
@@ -10,13 +10,16 @@ from brasiltransporta.infrastructure.persistence.sqlalchemy.models.user import U
 
 
 def _reset_db():
-    # Garante tabelas criadas (idempotente)
-    Base.metadata.create_all(bind=engine)
-    # Limpa a tabela usando o ORM (compatível com SQLAlchemy 2.0 e qualquer dialeto)
-    with get_session() as s:
-        s.execute(delete(UserModel))
-        s.commit()
-
+    from brasiltransporta.infrastructure.persistence.sqlalchemy.session import SessionLocal
+    with SessionLocal() as s:
+        # desabilita checks e limpa em cascata
+        s.execute(text("SET session_replication_role = 'replica'"))
+        try:
+            s.execute(text("TRUNCATE TABLE advertisements, stores, users RESTART IDENTITY CASCADE"))
+            s.commit()
+        finally:
+            s.execute(text("SET session_replication_role = 'origin'"))
+            s.commit()
 
 def test_register_and_get_user_by_id_and_email():
     _reset_db()

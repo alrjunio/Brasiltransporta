@@ -9,7 +9,7 @@ from brasiltransporta.presentation.api.controllers.transactions import router as
 from brasiltransporta.presentation.api.controllers.plans import router as plans_router
 from brasiltransporta.presentation.api.controllers.advertisements import router as advertisements_router
 
-from brasiltransporta.domain.errors import ValidationError, DomainError
+from brasiltransporta.domain.errors.errors import ValidationError, DomainError
 
 
 def create_app() -> FastAPI:
@@ -44,8 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(stores_router)
     app.include_router(transactions_router)
     app.include_router(plans_router)
-    #app.include_router(advertisements_router)   
+    app.include_router(advertisements_router)   
     return app
 
 
-app = create_app()
+app = create_app()      

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 # Sequências obviamente inválidas (14 dígitos iguais)
 _INVALID_SEQUENCES = {str(d) * 14 for d in range(10)}

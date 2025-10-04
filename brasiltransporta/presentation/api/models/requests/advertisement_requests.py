@@ -1,4 +1,3 @@
-# presentation/api/models/requests/advertisement_requests.py
 from pydantic import BaseModel, Field
 
 class CreateAdvertisementRequest(BaseModel):
@@ -8,6 +7,3 @@ class CreateAdvertisementRequest(BaseModel):
     description: str = Field(..., min_length=10, description="Descrição do anúncio")
     price_amount: float = Field(..., gt=0, description="Preço do veículo")
     price_currency: str = Field("BRL", description="Moeda (padrão: BRL)")
-
-class PublishAdvertisementRequest(BaseModel):
-    advertisement_id: str = Field(..., description="ID do anúncio a ser publicado")

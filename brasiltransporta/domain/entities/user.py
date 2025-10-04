@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 from uuid import uuid4
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 from brasiltransporta.domain.value_objects.email import Email
 from brasiltransporta.domain.value_objects.phone_number import PhoneNumber
 

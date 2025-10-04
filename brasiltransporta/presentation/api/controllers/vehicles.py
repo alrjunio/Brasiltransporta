@@ -9,7 +9,7 @@ from brasiltransporta.presentation.api.di.list_vehicles_by_store_uc import get_l
 
 from brasiltransporta.presentation.api.models.requests.vehicle_requests import CreateVehicleRequest
 from brasiltransporta.presentation.api.models.responses.vehicle_responses import VehicleResponse
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 router = APIRouter(tags=["vehicles"])
 

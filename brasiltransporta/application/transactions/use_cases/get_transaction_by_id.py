@@ -39,3 +39,31 @@ class GetTransactionByIdUseCase:
             created_at=getattr(tx, "created_at", None),
             updated_at=getattr(tx, "updated_at", None),
         )
+
+from dataclasses import dataclass
+from typing import Optional, Any
+
+@dataclass(frozen=True)
+class GetTransactionByIdInput:
+    transaction_id: str
+
+@dataclass(frozen=True)
+class GetTransactionByIdOutput:
+    # Você pode deixar genérico; o controller normaliza o objeto retornado.
+    value: Optional[Any] = None
+
+class GetTransactionByIdUseCase:
+    def __init__(self, repository=None):
+        """
+        repository: opcional; se fornecido, deve ter um método get_by_id(id: str) -> entidade/DTO
+        """
+        self._repo = repository
+
+    def execute(self, input_data: GetTransactionByIdInput) -> Optional[Any]:
+        """
+        Retorna a entidade/DTO se houver repositório; caso contrário, None.
+        Isso é suficiente para não quebrar os imports do controller/routers.
+        """
+        if self._repo is None:
+            return None
+        return self._repo.get_by_id(input_data.transaction_id)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 from brasiltransporta.domain.entities.transaction import Transaction, PaymentMethod
 
 @dataclass(frozen=True)

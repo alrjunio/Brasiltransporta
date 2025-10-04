@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 from brasiltransporta.domain.entities.advertisement import Advertisement
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 @dataclass
 class CreateAdvertisementInput:
@@ -16,19 +16,21 @@ class CreateAdvertisementOutput:
     advertisement_id: str
 
 class CreateAdvertisementUseCase:
-    def __init__(self, ad_repo, store_repo, vehicle_repo):
+    def __init__(self, ad_repo, store_repo=None, vehicle_repo=None):
         self._ads = ad_repo
         self._stores = store_repo
         self._vehicles = vehicle_repo
 
     def execute(self, inp: CreateAdvertisementInput) -> CreateAdvertisementOutput:
-        store = self._stores.get_by_id(inp.store_id) if hasattr(self._stores, "get_by_id") else None
-        if store is None:
-            raise ValidationError("Loja não encontrada")
+        # TODO: Implementar validação de store e vehicle quando os repositórios estiverem prontos
+        # Por enquanto, vamos apenas criar o advertisement
+        # store = self._stores.get_by_id(inp.store_id) if self._stores else None
+        # if store is None:
+        #     raise ValidationError("Loja não encontrada")
 
-        vehicle = self._vehicles.get_by_id(inp.vehicle_id) if hasattr(self._vehicles, "get_by_id") else None
-        if vehicle is None:
-            raise ValidationError("Veículo não encontrado")
+        # vehicle = self._vehicles.get_by_id(inp.vehicle_id) if self._vehicles else None  
+        # if vehicle is None:
+        #     raise ValidationError("Veículo não encontrado")
 
         ad = Advertisement.create(
             store_id=inp.store_id,

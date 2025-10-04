@@ -1,7 +1,7 @@
 # tests/domain/entities/test_transaction.py
 import pytest
 from brasiltransporta.domain.entities.transaction import Transaction, TransactionStatus, PaymentMethod
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 class TestTransaction:
     def test_create_transaction_success(self):

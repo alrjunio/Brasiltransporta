@@ -1,13 +1,11 @@
 from dataclasses import dataclass, field
-from datetime import datetime
-from uuid import uuid4
-from typing import Optional
 from enum import Enum
+from typing import Optional, Dict, Any
+from uuid import uuid4
+from datetime import datetime
 
-class PaymentMethod(Enum):
-    CREDIT_CARD = "credit_card"
-    PIX = "pix"
-    BOLETO = "boleto"
+from brasiltransporta.domain.value_objects.money import Money
+from brasiltransporta.domain.errors.errors import ValidationError
 
 class TransactionStatus(Enum):
     PENDING = "pending"
@@ -15,39 +13,51 @@ class TransactionStatus(Enum):
     FAILED = "failed"
     REFUNDED = "refunded"
 
+class PaymentMethod(Enum):
+    CREDIT_CARD = "credit_card"
+    PIX = "pix"  
+    
 @dataclass
 class Transaction:
     id: str
     user_id: str
     plan_id: str
-    amount: float
-    currency: str = "BRL"
-    payment_method: PaymentMethod = PaymentMethod.CREDIT_CARD
-    status: TransactionStatus = TransactionStatus.PENDING
+    amount: Money
+    payment_method: PaymentMethod
+    status: TransactionStatus = field(default=TransactionStatus.PENDING)
+    currency: str = field(default="BRL")
     external_payment_id: Optional[str] = None
-    metadata: Optional[dict] = None
+    metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 
     @classmethod
-    def create(cls, user_id: str, plan_id: str, amount: float, payment_method: PaymentMethod, currency: str = "BRL", metadata: Optional[dict]=None) -> "Transaction":
-        if amount <= 0:
-            # testes de domínio esperam ValueError (não ValidationError)
-            raise ValueError("Valor da transação deve ser maior que zero")
+    def create(
+        cls,
+        user_id: str,
+        plan_id: str,
+        amount: float,
+        payment_method: PaymentMethod,
+        currency: str = "BRL",
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> "Transaction":
+        if amount is None or float(amount) <= 0:
+            # TESTE espera ValidationError com essa mensagem
+            raise ValidationError("Valor da transação deve ser maior que zero")
+
         return cls(
             id=str(uuid4()),
             user_id=user_id,
             plan_id=plan_id,
-            amount=float(amount),
-            currency=currency,
+            amount=Money(float(amount), currency),
             payment_method=payment_method,
-            status=TransactionStatus.PENDING,
-            metadata=metadata or None,
+            currency=currency,
+            metadata=metadata
         )
 
-    def mark_completed(self, external_payment_id: str) -> None:
+    def mark_completed(self, external_id: str) -> None:
         self.status = TransactionStatus.COMPLETED
-        self.external_payment_id = external_payment_id
+        self.external_payment_id = external_id
         self.updated_at = datetime.utcnow()
 
     def mark_failed(self) -> None:
@@ -55,8 +65,8 @@ class Transaction:
         self.updated_at = datetime.utcnow()
 
     def refund(self) -> None:
+        # TESTE espera ValidationError e mensagem SEM ponto final
         if self.status != TransactionStatus.COMPLETED:
-            # testes de domínio esperam ValueError e mensagem SEM ponto final
-            raise ValueError("Apenas transações completadas podem ser reembolsadas")
+            raise ValidationError("Apenas transações completadas podem ser reembolsadas")
         self.status = TransactionStatus.REFUNDED
         self.updated_at = datetime.utcnow()

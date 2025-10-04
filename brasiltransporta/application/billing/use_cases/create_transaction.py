@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from brasiltransporta.domain.entities.transaction import Transaction
 from brasiltransporta.domain.value_objects.price import Price
 from brasiltransporta.domain.repositories.transaction_repository import TransactionRepository
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,7 @@ import re
 from uuid import UUID
 
 from brasiltransporta.domain.entities.vehicle import Vehicle
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 PLATE_RE = re.compile(r"^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$")  # Formato Mercosul
 

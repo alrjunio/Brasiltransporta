@@ -3,7 +3,7 @@ from typing import Optional
 
 from brasiltransporta.domain.repositories.user_repository import UserRepository
 from brasiltransporta.domain.entities.user import User
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 class PasswordHasher:

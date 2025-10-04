@@ -1,54 +1,66 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 
-from brasiltransporta.application.advertisements.use_cases.create_advertisement import (
-    CreateAdvertisementUseCase, CreateAdvertisementInput
+from brasiltransporta.application.advertisements.use_cases.create_advertisement import CreateAdvertisementInput, CreateAdvertisementOutput
+from brasiltransporta.application.advertisements.use_cases.get_advertisement_by_id import GetAdvertisementByIdOutput
+from brasiltransporta.presentation.api.models.requests.advertisement_requests import CreateAdvertisementRequest
+from brasiltransporta.presentation.api.models.responses.advertisement_responses import (
+    PublishAdvertisementResponse,
+    AdvertisementDetailResponse,
+    CreateAdvertisementResponse,
 )
-from brasiltransporta.application.advertisements.use_cases.publish_advertisement import (
-    PublishAdvertisementUseCase, PublishAdvertisementInput
+from brasiltransporta.presentation.api.models.requests.advertisement_requests import (
+    CreateAdvertisementRequest,
 )
 
-# Estas funções são intencionalmente simples: nos testes elas serão "patchadas".
-def get_create_advertisement_uc() -> CreateAdvertisementUseCase:
-    raise RuntimeError("DI não configurado (esperado ser patchado nos testes)")
+from brasiltransporta.presentation.api.models.requests.advertisement_requests import (
+    CreateAdvertisementRequest,
+)
 
-def get_get_advertisement_by_id_uc():
-    raise RuntimeError("DI não configurado (esperado ser patchado nos testes)")
+from brasiltransporta.application.advertisements.use_cases.publish_advertisement import PublishAdvertisementInput, PublishAdvertisementUseCase
+
+# Importe as dependências do di
+from brasiltransporta.presentation.api.di.dependencies import (
+    get_create_advertisement_uc, 
+    get_get_advertisement_by_id_uc, 
+    get_publish_advertisement_uc
+)
 
 router = APIRouter(prefix="/advertisements", tags=["advertisements"])
 
-class CreateAdvertisementRequest(BaseModel):
-    store_id: str
-    vehicle_id: str
-    title: str
-    description: Optional[str] = ""
-    price_amount: float
-
-class CreateAdvertisementResponse(BaseModel):
-    id: str
-
-@router.post("", response_model=CreateAdvertisementResponse, status_code=status.HTTP_201_CREATED)
-def create_advertisement(
-    payload: CreateAdvertisementRequest,
-    uc: CreateAdvertisementUseCase = Depends(get_create_advertisement_uc),
+@router.post("/", response_model=CreateAdvertisementOutput, status_code=201)
+async def create_advertisement(
+    request: CreateAdvertisementRequest,
+    use_case = Depends(get_create_advertisement_uc)
 ):
-    out = uc.execute(CreateAdvertisementInput(**payload.model_dump()))
-    return {"id": out.advertisement_id}
+    try:
+        input_data = CreateAdvertisementInput(
+            store_id=request.store_id,
+            vehicle_id=request.vehicle_id,
+            title=request.title,
+            description=request.description,
+            price_amount=request.price_amount,
+        )
+        result = use_case.execute(input_data)
+        return CreateAdvertisementOutput(advertisement_id=result.advertisement_id)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
-class AdvertisementDetailResponse(BaseModel):
-    id: str
-    store_id: str
-    vehicle_id: str
-    title: str
-    description: str
-    price_amount: float
-    status: str
-
-@router.get("/{advertisement_id}", response_model=AdvertisementDetailResponse)
-def get_advertisement(advertisement_id: str, uc = Depends(get_get_advertisement_by_id_uc)):
-    out = uc.execute(advertisement_id)
-    if out is None:
+@router.get("/{advertisement_id}", response_model=GetAdvertisementByIdOutput)
+async def get_advertisement(
+    advertisement_id: str,
+    use_case = Depends(get_get_advertisement_by_id_uc)
+):
+    result = use_case.execute(advertisement_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Advertisement not found")
-    # Nos testes, 'out' é um Mock com atributos; FastAPI/Pydantic serializam.
-    return out
+    return result
+
+@router.post("/{advertisement_id}/publish", response_model=PublishAdvertisementResponse)
+def publish_advertisement(
+    advertisement_id: str,
+    use_case: PublishAdvertisementUseCase = Depends(),
+):
+    input_data = PublishAdvertisementInput(advertisement_id=advertisement_id)
+    result = use_case.execute(input_data)
+    return PublishAdvertisementResponse(**result.dict())

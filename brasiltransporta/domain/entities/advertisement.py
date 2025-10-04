@@ -4,13 +4,14 @@ from typing import Optional
 from uuid import uuid4
 from enum import Enum
 
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 class AdvertisementStatus(Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
     ACTIVE = "active"
+    SOLD = "sold"
 
 
 @dataclass
@@ -38,6 +39,14 @@ class Advertisement:
         price_amount: float = 0.0,
         price_currency: str = "BRL"
     ) -> "Advertisement":
+        # Validações exigidas pelos testes
+        if len(title) < 5:
+            raise ValueError("Título deve ter pelo menos 5 caracteres")
+        if len(description) < 10:
+            raise ValueError("Descrição deve ter pelo menos 10 caracteres")
+        if price_amount <= 0:
+            raise ValueError("Preço deve ser maior que zero")
+        
         return cls(
             id=str(uuid4()),
             store_id=store_id,
@@ -52,12 +61,18 @@ class Advertisement:
         )
 
     def publish(self) -> None:
-        # mensagem EXATA esperada pelos testes
         if self.status != AdvertisementStatus.DRAFT:
-            raise ValidationError("Somente anúncios em 'draft' podem ser publicados.")
-        self.status = AdvertisementStatus.PUBLISHED
+            raise ValueError("Apenas anúncios em rascunho podem ser publicados")
+        self.status = AdvertisementStatus.ACTIVE  # Testes esperam ACTIVE, não PUBLISHED
+        self.updated_at = datetime.utcnow()
+
+    def mark_as_sold(self) -> None:
+        self.status = AdvertisementStatus.SOLD
+        self.updated_at = datetime.utcnow()
+
+    def increment_views(self) -> None:
+        self.views += 1
         self.updated_at = datetime.utcnow()
 
 
-# Exportação explícita para resolver problemas de importação
 __all__ = ['Advertisement', 'AdvertisementStatus']

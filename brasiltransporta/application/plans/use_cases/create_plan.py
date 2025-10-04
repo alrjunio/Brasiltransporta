@@ -3,7 +3,7 @@ from typing import Optional, Any
 
 from brasiltransporta.domain.entities.plan import Plan, PlanType, BillingCycle
 from brasiltransporta.domain.repositories.plan_repository import PlanRepository
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 @dataclass(frozen=True)

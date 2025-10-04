@@ -9,7 +9,7 @@ from brasiltransporta.application.users.use_cases.register_user import (
 )
 from brasiltransporta.domain.repositories.user_repository import UserRepository
 from brasiltransporta.domain.entities.user import User
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 # ---- Fakes de teste ----

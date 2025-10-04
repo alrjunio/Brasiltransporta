@@ -6,7 +6,7 @@ from brasiltransporta.presentation.api.models.responses.store_responses import S
 from brasiltransporta.presentation.api.di.get_create_store_uc import get_create_store_uc
 from brasiltransporta.presentation.api.di.get_store_by_id_uc import get_store_by_id_uc
 from brasiltransporta.application.stores.use_cases.create_store import CreateStoreInput
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 router = APIRouter(prefix="/stores", tags=["stores"])
 

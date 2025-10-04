@@ -11,7 +11,7 @@ from brasiltransporta.application.plans.use_cases.list_active_plans import (
     ListActivePlansUseCase
 )
 from brasiltransporta.domain.entities.plan import Plan, PlanType, BillingCycle
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 class TestCreatePlanUseCase:
     def test_execute_success(self):

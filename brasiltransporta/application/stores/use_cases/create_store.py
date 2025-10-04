@@ -5,7 +5,7 @@ from brasiltransporta.domain.entities.store import Store
 from brasiltransporta.domain.value_objects.location import Location
 from brasiltransporta.domain.value_objects.phone_number import PhoneNumber
 from brasiltransporta.domain.repositories.store_repository import StoreRepository
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass(frozen=True)
 class GetAdvertisementByIdOutput:
     id: str
@@ -15,6 +16,7 @@ class GetAdvertisementByIdOutput:
     views: int
     created_at: str
     updated_at: str
+
 
 class GetAdvertisementByIdUseCase:
     def __init__(self, advertisements):
@@ -37,5 +39,5 @@ class GetAdvertisementByIdUseCase:
             is_featured=advertisement.is_featured,
             views=advertisement.views,
             created_at=advertisement.created_at.isoformat(),
-            updated_at=advertisement.updated_at.isoformat()
+            updated_at=advertisement.updated_at.isoformat() if advertisement.updated_at else advertisement.created_at.isoformat()
         )

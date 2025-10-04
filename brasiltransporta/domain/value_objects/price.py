@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from brasiltransporta.domain.errors import ValidationError
+from brasiltransporta.domain.errors.errors import ValidationError
 
 @dataclass(frozen=True)
 class Price:

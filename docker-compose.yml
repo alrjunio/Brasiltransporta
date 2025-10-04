@@ -1,9 +1,14 @@
-# docker-compose.yml (Compose V2)
+﻿# docker-compose.yml (Produção/Desenvolvimento)
 name: brasiltransporta
+
+x-env-defaults: &env-defaults
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672//}
 
 services:
   postgres_db:
-    image: postgres:15
+    image: postgres:16
     container_name: postgres_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -14,74 +19,70 @@ services:
     volumes:
       - brasiltransporta_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-brasiltransporta}"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
       retries: 10
-      start_period: 5s
+      start_period: 30s  # ✅ Aumentado para PostgreSQL inicializar
 
   redis:
     image: redis:7
     container_name: redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"     # AMQP
-      - "15672:15672"   # UI
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Dashboard
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   fastapi_app:
     build:
       context: .
-      dockerfile: Docker/fastapi.Dockerfile     # <— padronizado
+      dockerfile: fastapi.Dockerfile
       target: runtime
     container_name: fastapi_app
-    env_file:
-      - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672//}
-    volumes:
-      - ./:/app
-    ports:
-      - "8001:8000"
+      <<: *env-defaults
     depends_on:
       postgres_db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
-        condition: service_started
-    entrypoint: ["/app/Docker/entrypoint.sh"]   # <— ajuste o caminho/case
-    command: uvicorn brasiltransporta.presentation.api.app:app --host 0.0.0.0 --port 8000
+        condition: service_healthy
+    ports:
+      - "8000:8000"
     restart: unless-stopped
 
-  tests:
+  worker:
     build:
       context: .
-      dockerfile: Docker/fastapi.Dockerfile     # <— padronizado
-      target: test
-    container_name: brasiltransporta_tests
-    volumes:
-      - ./:/app:delegated
+      dockerfile: worker.Dockerfile
+    container_name: worker
     environment:
-      # se seus testes usarem o Postgres/Redis, mantenha estas URLs;
-      # se usarem SQLite nos fixtures, isso nem será lido
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672//}
+      <<: *env-defaults
     depends_on:
       postgres_db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
-        condition: service_started
-    command: ["pytest", "-q"]
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   brasiltransporta_pgdata:

@@ -1,97 +1,70 @@
-﻿name: CI/CD Pipeline
+﻿﻿name: CI (Dockerized)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: ["main", "develop"]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSE_FILE: docker-compose.yml
+  TEST_OVERRIDE: docker-compose.ci.yml
 
 jobs:
-  test:
-    runs-on: ubuntu-latest  # Linux runner
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: transporte2412
-          POSTGRES_DB: brasiltransporta
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio
-
-      - name: Run tests with PowerShell
-        shell: pwsh
-        env:
-          DATABASE_URL: postgresql://admin:transporte2412@localhost:5432/brasiltransporta
-          SECRET_KEY: test-secret-key
-        run: |
-          Write-Host "🎯 Executando testes..."
-          python -m pytest -v
-          Write-Host "✅ Execução de testes finalizada!"
-
-  code-quality:
+  test-in-docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # ✅ Reduzido significativamente
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test image
+        uses: docker/build-push-action@v6
         with:
-          python-version: '3.11'
+          context: .
+          file: fastapi.Dockerfile
+          target: test
+          tags: brasiltransporta-test:latest
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Code quality checks with PowerShell
-        shell: pwsh
+      - name: Start infrastructure
         run: |
-          Write-Host "🔍 Verificando qualidade do código..."
-          pip install black flake8
+          docker compose -f "$COMPOSE_FILE" -f "$TEST_OVERRIDE" up -d postgres_db redis rabbitmq
+          
+          # Wait for PostgreSQL com timeout
+          echo "Aguardando serviços..."
+          timeout 60s bash -c '
+            until docker compose exec -T postgres_db pg_isready -U postgres; do
+              echo "PostgreSQL não está pronto...";
+              sleep 2;
+            done
+          '
 
-          Write-Host "📝 Verificando formatação com Black..."
-          black --check backend/
-          if ($LASTEXITCODE -ne 0) {
-              Write-Warning "⚠️ Código precisa de formatação. Execute: black backend/"
-          }
-
-          Write-Host "🔎 Verificando com Flake8..."
-          flake8 backend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-          Write-Host "✅ Análise de qualidade completada!"
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [test, code-quality]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Deploy Docker Compose
-        shell: pwsh
+      - name: Run tests
         run: |
-          Write-Host "🚀 Iniciando deploy..."
-          docker compose up -d --build
-          Write-Host "✅ Deploy concluído!"
+          set -e
+          # Executa testes e para os containers depois
+          docker compose -f "$COMPOSE_FILE" -f "$TEST_OVERRIDE" up \
+            --build \
+            --abort-on-container-exit \
+            --exit-code-from fastapi_app \
+            fastapi_app
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f "$COMPOSE_FILE" -f "$TEST_OVERRIDE" down -v --remove-orphans
+          docker system prune -f

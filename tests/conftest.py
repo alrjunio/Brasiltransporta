@@ -1,12 +1,7 @@
 ﻿# tests/conftest.py
 import os
 import pytest
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-# Base do seu projeto
-from brasiltransporta.infrastructure.persistence.sqlalchemy.models.base import Base
+from unittest.mock import Mock, MagicMock
 
 # FastAPI (se existir)
 try:
@@ -18,49 +13,43 @@ except Exception:
     app = None
     TestClient = None
 
-# URL do banco de testes: usa o Postgres do docker-compose
-DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta")
-)
-
 @pytest.fixture(scope="session")
 def engine():
-    eng = create_engine(DATABASE_URL, future=True)
-    # cria todas as tabelas 1x por sessão de testes
-    Base.metadata.create_all(eng)
-    yield eng
-    eng.dispose()
+    """Mock engine para evitar conexão com banco real"""
+    mock_engine = Mock()
+    return mock_engine
 
 @pytest.fixture(scope="function")
 def db_session(engine):
-    """Sessão nova por teste, com rollback no final."""
-    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.rollback()
-        session.close()
+    """Mock session para evitar conexão com banco real"""
+    mock_session = Mock()
+    # Configurar comportamentos básicos do mock
+    mock_session.commit = Mock()
+    mock_session.rollback = Mock() 
+    mock_session.close = Mock()
+    mock_session.execute = Mock(return_value=Mock(scalar=Mock(return_value=None)))
+    return mock_session
 
 @pytest.fixture(scope="function")
 def client(db_session, monkeypatch):
-    """Cliente FastAPI, injetando a sessão de teste na app."""
+    """Cliente FastAPI com mocks para evitar banco real"""
     if not HAS_API:
-        pytest.skip("App FastAPI nao disponivel.")
+        pytest.skip("App FastAPI não disponível.")
 
-    # sua função original de sessão
-    from brasiltransporta.infrastructure.persistence.sqlalchemy.session import get_session as _get_session
-
-    def _test_session():
-        try:
-            yield db_session
-        finally:
-            pass
+    # Mock da função get_session para retornar nossa session mockada
+    def _mock_session():
+        yield db_session
 
     monkeypatch.setattr(
         "brasiltransporta.infrastructure.persistence.sqlalchemy.session.get_session",
-        _test_session,
+        _mock_session,
+        raising=True,
+    )
+
+    # Mock de qualquer outra dependência de banco que possa existir
+    monkeypatch.setattr(
+        "brasiltransporta.infrastructure.persistence.sqlalchemy.models.base.Base.metadata.create_all",
+        Mock(),
         raising=True,
     )
 

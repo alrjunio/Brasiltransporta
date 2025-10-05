@@ -1,0 +1,43 @@
+correção e melhoria de arquivos sugestões 
+
+O que ficou frágil (lista objetiva)
+
+Entidade Vehicle sem created_at → controller inventa timestamp.
+
+Repository Protocol ≠ Repository SQLAlchemy (faltava get_by_plate, tipos de ID diferentes).
+
+Controllers: risco de retornar o id errado (dataclass) e de setar created_at manual.
+
+Providers DI: precisam sempre usar Depends(get_session) e importar o repo pelo caminho exato.
+
+Routers não incluídos no app.py → rotas “não encontradas”.
+
+Compat main.py ausente → testes/entradas antigas não acham app.
+
+Alembic: manter script_location e import do Base coerentes com a pasta real.
+
+O que eu proponho fazer (assim que você disser “OK”)
+
+Trocar os arquivos frágeis por versões corrigidas:
+
+domain/entities/vehicle.py (adicionar created_at e normalizar plate).
+
+domain/repositories/vehicle_repository.py (alinhar assinatura com a infra).
+
+infrastructure/.../repositories/vehicle_repository.py (retornar created_at do DB, incluir get_by_plate, commit/flush).
+
+presentation/api/controllers/vehicles.py (retorno {"id": out.vehicle_id}, created_at vindo do repo).
+
+presentation/api/di/*.py (usar Depends(get_session), imports corretos).
+
+presentation/api/app.py (garantir include_router(vehicles_router)).
+
+brasiltransporta/main.py (compat).
+
+Revisar (e, se faltar, criar):
+
+infrastructure/.../models/vehicle.py com created_at (server default) e unique em plate.
+
+Migração Alembic correspondente.
+
+Rodar testes no container (com Postgres ou SQLite), e te devolver o relatório.

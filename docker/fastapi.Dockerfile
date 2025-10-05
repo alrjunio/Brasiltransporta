@@ -1,4 +1,4 @@
-﻿﻿# ========= Base =========
+﻿# ========= Base =========
 FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,12 +21,12 @@ FROM base AS deps
 COPY pyproject.toml poetry.lock* ./
 COPY requirements*.txt ./
 
-# Instala dependências de forma otimizada
+# Instala dependências de forma otimizada - CORRIGIDO para Poetry 2.2.1
 RUN --mount=type=cache,target=/root/.cache/pip \
     set -eux \
     && if [ -f "poetry.lock" ]; then \
         pip install --no-cache-dir poetry \
-        && poetry install --no-dev --no-interaction --no-ansi; \
+        && poetry install --without dev --no-interaction --no-ansi; \
     elif [ -f "requirements.txt" ]; then \
         pip install --no-cache-dir -r requirements.txt; \
     else \
@@ -51,16 +51,11 @@ CMD ["uvicorn", "brasiltransporta.presentation.api.app:app", "--host", "0.0.0.0"
 # ========= Test =========
 FROM deps AS test
 
-# Instala dependências de desenvolvimento
+# Instala dependências de desenvolvimento - CORRIGIDO
 RUN --mount=type=cache,target=/root/.cache/pip \
     set -eux \
-    && if [ -f "poetry.lock" ]; then \
-        poetry install --no-interaction --no-ansi; \
-    elif [ -f "requirements-dev.txt" ]; then \
-        pip install --no-cache-dir -r requirements-dev.txt; \
-    else \
-        pip install --no-cache-dir pytest pytest-xdist; \
-    fi
+    && pip install --no-cache-dir poetry \
+    && poetry install --with dev --no-interaction --no-ansi
 
 COPY . /app
 
@@ -68,5 +63,4 @@ RUN groupadd -r tester && useradd -r -g tester tester \
     && chown -R tester:tester /app
 USER tester
 
-# Timeout para evitar testes travados
 CMD ["pytest", "-q", "--disable-warnings", "--timeout=30", "--durations=10"]

@@ -24,13 +24,13 @@ class CreateAdvertisementUseCase:
     def execute(self, inp: CreateAdvertisementInput) -> CreateAdvertisementOutput:
         # TODO: Implementar validação de store e vehicle quando os repositórios estiverem prontos
         # Por enquanto, vamos apenas criar o advertisement
-        # store = self._stores.get_by_id(inp.store_id) if self._stores else None
-        # if store is None:
-        #     raise ValidationError("Loja não encontrada")
+        store = self._stores.get_by_id(inp.store_id) if self._stores else None
+        if store is None:
+            raise ValidationError("Loja não encontrada")
 
-        # vehicle = self._vehicles.get_by_id(inp.vehicle_id) if self._vehicles else None  
-        # if vehicle is None:
-        #     raise ValidationError("Veículo não encontrado")
+        vehicle = self._vehicles.get_by_id(inp.vehicle_id) if self._vehicles else None  
+        if vehicle is None:
+            raise ValidationError("Veículo não encontrado")
 
         ad = Advertisement.create(
             store_id=inp.store_id,

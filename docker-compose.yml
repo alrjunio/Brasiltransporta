@@ -1,4 +1,3 @@
-﻿# docker-compose.yml (Produção/Desenvolvimento)
 name: brasiltransporta
 
 x-env-defaults: &env-defaults
@@ -23,7 +22,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s  # ✅ Aumentado para PostgreSQL inicializar
+      start_period: 30s  
 
   redis:
     image: redis:7
@@ -40,8 +39,8 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"    # AMQP
-      - "15672:15672"  # Dashboard
+      - "5672:5672"    
+      - "15672:15672"  
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -52,7 +51,7 @@ services:
   fastapi_app:
     build:
       context: .
-      dockerfile: fastapi.Dockerfile
+      dockerfile: Docker/fastapi.Dockerfile
       target: runtime
     container_name: fastapi_app
     environment:
@@ -83,6 +82,23 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+
+  test_runner:
+    build:
+      context: .
+      dockerfile: Docker/fastapi.Dockerfile
+      target: test
+    container_name: test_runner
+    environment:
+      <<: *env-defaults
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: ["pytest", "-v", "--tb=long", "-x"]
 
 volumes:
   brasiltransporta_pgdata:

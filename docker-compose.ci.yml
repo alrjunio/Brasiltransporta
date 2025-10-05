@@ -1,40 +1,27 @@
-﻿# Arquivo de override para CI - EVITA LOOPS
-name: brasiltransporta-ci
 
 services:
-  postgres_db:
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 2s
-      timeout: 2s
-      retries: 30
-      start_period: 10s
-
-  redis:
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 2s
-      timeout: 2s
-      retries: 10
-
-  rabbitmq:
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 2s
-      timeout: 2s
-      retries: 10
-
-  fastapi_app:
+  test_runner:
     build:
-      target: test  # ✅ Usa estágio de testes
-    container_name: fastapi_app_ci
+      context: .
+      dockerfile: Docker/fastapi.Dockerfile
+      target: test  
+    container_name: test_runner
     environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta_test
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres_db:5432/brasiltransporta
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
-    command: ["pytest", "-q", "--disable-warnings", "--maxfail=3", "--durations=10"]  # ✅ Comando explícito
-    restart: "no"  # ✅ CRÍTICO: Evita loop infinito
-    ports: []  # ✅ Remove port binding em CI
-
-  worker:
-    profiles: ["ignore"]  # ✅ Ignora worker em CI
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: >
+      bash -c "
+        set -e
+        echo '🔄 Executando migrations...'
+        alembic upgrade head
+        echo '🧪 Executando testes...'
+        pytest -v --disable-warnings --tb=short --durations=10 --maxfail=5
+      "

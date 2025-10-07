@@ -7,3 +7,17 @@ class ValidationError(DomainError):
     def __init__(self, message: str):
         self.message = message
         super().__init__(self.message)
+        
+class DomainError(Exception):
+    """Base domain error"""
+    pass
+
+class ValidationError(DomainError):
+    """Validation error"""
+    pass
+
+class SecurityAlertError(DomainError):
+    """Security alert - potential token theft detected"""
+    pass
+
+# Adicione esta linha se SecurityAlertError não existir

@@ -35,18 +35,166 @@ O **BrasilTransporta** é uma plataforma marketplace especializada em veículos 
 ---
 
 ## 🏗️ Arquitetura do Projeto
-brasiltransporta/
-├── backend/ # Código fonte FastAPI
-│ ├── app/ # Aplicação principal
-│ │ ├── api/ # Endpoints da API
-│ │ ├── core/ # Configurações e segurança
-│ │ ├── models/ # Modelos de dados
-│ │ └── services/ # Lógica de negócio
-│ └── tests/ # Testes automatizados
-├── docker/ # Configurações Docker
-├── docs/ # Documentação
-├── scripts/ # Scripts de automação
-└── docker-compose.yml # Orquestração de containers
+
+
+1. 📊 SEÇÃO: "MODELO DE DADOS" (Após "Arquitetura do Projeto")
+markdown
+---
+
+## 📊 Modelo de Dados
+
+### 🏗️ Diagrama Entidade-Relacionamento (ER)
+
+```mermaid
+erDiagram
+    USERS {
+        uuid id PK
+        string name
+        string email UK
+        string password_hash
+        string region
+        datetime created_at
+        datetime updated_at
+    }
+    
+    STORES {
+        uuid id PK
+        string name
+        uuid owner_user_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    VEHICLES {
+        uuid id PK
+        string make
+        string model
+        int year
+        string category
+        uuid store_id FK
+        datetime created_at
+    }
+    
+    ADVERTISEMENTS {
+        uuid id PK
+        string title
+        string description
+        decimal price_amount
+        string price_currency
+        string status
+        uuid store_id FK
+        uuid vehicle_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    PLANS {
+        uuid id PK
+        string name
+        string description
+        decimal price_amount
+        string price_currency
+        int max_ads
+        boolean is_active
+        datetime created_at
+    }
+    
+    TRANSACTIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid plan_id FK
+        decimal amount
+        string currency
+        string payment_method
+        string status
+        datetime created_at
+    }
+
+    USERS ||--o{ STORES : owns
+    STORES ||--o{ VEHICLES : registers
+    STORES ||--o{ ADVERTISEMENTS : publishes
+    VEHICLES ||--o| ADVERTISEMENTS : featured_in
+    USERS ||--o{ TRANSACTIONS : makes
+    PLANS ||--o{ TRANSACTIONS : purchased_in
+    ADVERTISEMENTS }|--|| PLANS : uses
+🗃️ Entidades do Domínio
+Entidade	Descrição	Campos Principais
+User	Usuário do sistema	id, name, email, region
+Store	Loja anunciante	id, name, owner_user_id
+Vehicle	Veículo cadastrado	id, make, model, year, category
+Advertisement	Anúncio ativo	id, title, price, status
+Plan	Plano de assinatura	id, name, price, max_ads
+Transaction	Transação de pagamento	id, amount, status, payment_method
+🔗 Relacionamentos Principais
+1 Usuário → N Lojas (Relação de propriedade)
+
+1 Loja → N Veículos (Cadastro de frota)
+
+1 Loja → N Anúncios (Publicações ativas)
+
+1 Veículo → 1 Anúncio (Anúncio específico)
+
+1 Usuário → N Transações (Histórico de pagamentos)
+
+1 Plano → N Transações (Vendas do plano)
+
+N Anúncios → 1 Plano (Plano utilizado)
+
+💾 Estrutura do Banco
+sql
+-- Exemplo de consulta para anúncios ativos
+SELECT 
+    a.title,
+    a.price_amount,
+    s.name as store_name,
+    v.make,
+    v.model,
+    v.year
+FROM advertisements a
+JOIN stores s ON a.store_id = s.id
+JOIN vehicles v ON a.vehicle_id = v.id
+WHERE a.status = 'active';
+text
+
+### **2. 📈 SEÇÃO: "ESTADO DO PROJETO"** (Antes do índice)
+
+```markdown
+---
+
+## 📈 Estado do Projeto
+
+### ✅ Concluído
+- [x] **Arquitetura base** com FastAPI e PostgreSQL
+- [x] **Sistema de usuários** com autenticação JWT
+- [x] **CI/CD pipeline** com GitHub Actions
+- [x] **Containerização** com Docker Compose
+- [x] **Modelo de dados** completo com 6 entidades principais
+- [x] **Testes automatizados** (57 testes passando)
+
+### 🚧 Em Desenvolvimento
+- [ ] **CRUD completo** para todas as entidades
+- [ ] **Sistema de mensagens** entre usuários
+- [ ] **Integração com pagamentos**
+- [ ] **Dashboard administrativo**
+
+### 📅 Próximas Fases
+- [ ] **Refatoração de testes** (12 testes skipped)
+- [ ] **Cache com Redis** para performance
+- [ ] **Filas com Celery** para tarefas assíncronas
+- [ ] **Deploy em produção** com monitoramento
+🎯 PARA DAR BAIXA NO TAIGA:
+Status: ✅ CONCLUÍDO
+
+Evidências:
+
+✅ Diagrama ER criado e documentado
+
+✅ Modelo de dados adicionado ao README
+
+✅ 6 entidades modeladas e relacionadas
+
+✅ Documentação técnica completa
+
 
 
 ### 🛠️ Stack Tecnológica

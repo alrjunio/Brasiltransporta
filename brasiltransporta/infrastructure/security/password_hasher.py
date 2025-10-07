@@ -1,9 +1,8 @@
 from __future__ import annotations
+from passlib.hash import bcrypt # type: ignore
+from brasiltransporta.application.users.use_cases.register_user import PasswordHasher
 
-from passlib.hash import bcrypt
-
-
-class BcryptPasswordHasher:
+class BcryptPasswordHasher(PasswordHasher):  # Agora implementa a interface
     """Implementação real de hashing de senha usando passlib/bcrypt."""
 
     def hash(self, raw_password: str) -> str:

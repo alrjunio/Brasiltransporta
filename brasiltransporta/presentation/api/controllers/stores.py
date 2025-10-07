@@ -7,13 +7,18 @@ from brasiltransporta.presentation.api.di.get_create_store_uc import get_create_
 from brasiltransporta.presentation.api.di.get_store_by_id_uc import get_store_by_id_uc
 from brasiltransporta.application.stores.use_cases.create_store import CreateStoreInput
 from brasiltransporta.domain.errors.errors import ValidationError
+from brasiltransporta.presentation.api.dependencies.authz import require_roles
 
 router = APIRouter(prefix="/stores", tags=["stores"])
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=StoreResponse)
+@router.post("", status_code=status.HTTP_201_CREATED, 
+        response_model=StoreResponse, 
+        dependencies=[Depends(require_roles("seller", "admin"))],
+        )
 def create_store(
     payload: CreateStoreRequest,
     uc = Depends(get_create_store_uc),
+    
 ):
     try:
         out = uc.execute(CreateStoreInput(
@@ -30,7 +35,10 @@ def create_store(
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-@router.get("/{store_id}", response_model=StoreResponse)
+@router.get("/{store_id}", 
+        response_model=StoreResponse,
+        dependencies=[Depends(require_roles("seller", "admin"))],
+        )
 def get_store_by_id(
     store_id: uuid.UUID,
     uc = Depends(get_store_by_id_uc),
@@ -45,3 +53,4 @@ def get_store_by_id(
         )
     except ValidationError as e:
         raise HTTPException(status_code=404, detail=str(e))
+

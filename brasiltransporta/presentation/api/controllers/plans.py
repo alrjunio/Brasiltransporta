@@ -13,6 +13,7 @@ from brasiltransporta.application.plans.use_cases.create_plan import (
 from brasiltransporta.application.plans.use_cases.list_active_plans import (
     ListActivePlansUseCase,
 )
+from brasiltransporta.presentation.api.dependencies.authz import require_roles
 
 # estes são os símbolos que o teste patcha
 from brasiltransporta.presentation.api.di.get_create_plan_uc import get_create_plan_uc
@@ -28,7 +29,10 @@ def _dep_get_create_plan_uc() -> CreatePlanUseCase:
 def _dep_get_list_active_plans_uc() -> ListActivePlansUseCase:
     return get_list_active_plans_uc()
 
-@router.post("", response_model=CreatePlanResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=CreatePlanResponse, 
+        status_code=status.HTTP_201_CREATED,
+         dependencies=[Depends(require_roles( "admin"  ))],
+         )
 def create_plan(
     payload: CreatePlanRequest,
     uc: CreatePlanUseCase = Depends(_dep_get_create_plan_uc),
@@ -39,7 +43,7 @@ def create_plan(
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
-@router.get("", response_model=ListPlansResponse)
+@router.get("", response_model=ListPlansResponse,  dependencies=[Depends(require_roles("seller", "admin"))])
 def list_plans(
     uc: ListActivePlansUseCase = Depends(_dep_get_list_active_plans_uc),
 ):

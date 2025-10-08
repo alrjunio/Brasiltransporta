@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import uuid4
 
-from .address import Address
-from .enums import StoreCategory
+from brasiltransporta.domain.entities.address import Address
+from brasiltransporta.domain.entities.enums import StoreCategory
 
 @dataclass
 class Store:
@@ -37,6 +37,19 @@ class Store:
             categories=categories,
             contact_phone=contact_phone.strip(),
             is_active=True
+        )
+
+    @classmethod
+    def create_simple(cls, name: str, owner_id: str) -> "Store":
+        """Método simplificado para compatibilidade com testes"""
+        address = Address.create("", "", "", "")
+        return cls.create(
+            name=name,
+            owner_id=owner_id,
+            description="Loja de veículos",
+            address=address,
+            categories=[StoreCategory.PARTS_STORE],
+            contact_phone="(00) 00000-0000"
         )
 
     def update(self, name: Optional[str] = None, description: Optional[str] = None,

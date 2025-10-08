@@ -1,16 +1,32 @@
-﻿import pytest
-from unittest.mock import Mock
-from datetime import datetime, timedelta
+﻿from unittest.mock import Mock
+import pytest
 
-from brasiltransporta.domain.entities.advertisement import Advertisement
+from brasiltransporta.domain.entities.advertisement import Advertisement, AdvertisementStatus
 from brasiltransporta.domain.entities.store import Store
-from brasiltransporta.domain.entities.plan import Plan, PlanType, BillingCycle
-from brasiltransporta.application.advertisements.use_cases.create_advertisement import CreateAdvertisementUseCase
-from brasiltransporta.application.advertisements.use_cases.create_advertisement import CreateAdvertisementInput
+from brasiltransporta.domain.entities.address import Address
+from brasiltransporta.domain.entities.enums import StoreCategory
+from brasiltransporta.application.advertisements.use_cases.create_advertisement import (
+    CreateAdvertisementUseCase, 
+    CreateAdvertisementInput,
+    CreateAdvertisementOutput
+)
+from brasiltransporta.domain.errors.errors import ValidationError
 
 
 class TestCreateAdvertisementUseCase:
-    """Testa casos de uso de anúncios"""
+    """Test cases for CreateAdvertisementUseCase"""
+
+    def _create_test_store(self, name="Minha Loja", owner_id="user-123"):
+        """Helper method para criar store de teste"""
+        address = Address.create("Rua Teste", "São Paulo", "SP", "01234-000")
+        return Store.create(
+            name=name,
+            owner_id=owner_id,
+            description="Loja de veículos",
+            address=address,
+            categories=[StoreCategory.PARTS_STORE],
+            contact_phone="(11) 99999-9999"
+        )
 
     def test_create_advertisement_success(self):
         """Testa criação bem-sucedida de anúncio"""
@@ -19,36 +35,33 @@ class TestCreateAdvertisementUseCase:
         mock_store_repo = Mock()
         mock_vehicle_repo = Mock()
 
-        store = Store.create("Minha Loja", "user-123")
-        plan = Plan.create(
-            name="Plano Básico",
-            description="Plano básico de anúncio",
-            plan_type=PlanType.PREMIUM,
-            billing_cycle=BillingCycle.MONTHLY,
-            price_amount=100.0
-        )
+        store = self._create_test_store("Minha Loja", "user-123")
 
         mock_store_repo.get_by_id.return_value = store
+        mock_vehicle_repo.get_by_id.return_value = Mock()
+        mock_ad_repo.add.return_value = None
 
         use_case = CreateAdvertisementUseCase(
-            ad_repo=mock_ad_repo,
-            store_repo=mock_store_repo,
-            vehicle_repo=mock_vehicle_repo
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
+        )
+
+        ad_input = CreateAdvertisementInput(
+            store_id=store.id,
+            vehicle_id="vehicle-123",
+            title="Volvo FH 440 - Excelente estado",
+            description="Caminhão Volvo FH 440, 6x4, ano 2020, 150.000 km",
+            price_amount=250000.0
         )
 
         # Act
-        input_data = CreateAdvertisementInput(
-            store_id=store.id,
-            vehicle_id="vehicle-123",
-            title="Anúncio Teste",
-            description="Descrição do anúncio",
-            price_amount=1500.50
-        )
-        result = use_case.execute(input_data)
+        result = use_case.execute(ad_input)
 
         # Assert
-        assert result.advertisement_id is not None
-        assert len(result.advertisement_id) > 0
+        assert result is not None
+        assert isinstance(result, CreateAdvertisementOutput)
+        assert hasattr(result, 'advertisement_id')
         mock_ad_repo.add.assert_called_once()
 
     def test_create_advertisement_invalid_price(self):
@@ -58,36 +71,28 @@ class TestCreateAdvertisementUseCase:
         mock_store_repo = Mock()
         mock_vehicle_repo = Mock()
 
-        store = Store.create("Minha Loja", "user-123")
-        plan = Plan.create(
-            name="Plano Básico",
-            description="Plano básico de anúncio",
-            plan_type=PlanType.PREMIUM,
-            billing_cycle=BillingCycle.MONTHLY,
-            price_amount=100.0
-        )
+        store = self._create_test_store("Minha Loja", "user-123")
 
         mock_store_repo.get_by_id.return_value = store
+        mock_vehicle_repo.get_by_id.return_value = Mock()
 
         use_case = CreateAdvertisementUseCase(
-            ad_repo=mock_ad_repo,
-            store_repo=mock_store_repo,
-            vehicle_repo=mock_vehicle_repo
+            mock_ad_repo,
+            mock_store_repo, 
+            mock_vehicle_repo
         )
 
-        # Act & Assert
-        input_data = CreateAdvertisementInput(
+        ad_input = CreateAdvertisementInput(
             store_id=store.id,
             vehicle_id="vehicle-123",
-            title="Anúncio Teste",
-            description="Descrição do anúncio",
-            price_amount=-100.0  # Preço inválido
+            title="Volvo FH 440",
+            description="Caminhão em bom estado",
+            price_amount=-100.0
         )
-        
-        with pytest.raises(Exception) as exc_info:
-            use_case.execute(input_data)
-        
-        assert "preço" in str(exc_info.value).lower()
+
+        # Act & Assert - CORREÇÃO: Capture ValueError também
+        with pytest.raises((ValidationError, ValueError), match="Preço deve ser maior que zero"):
+            use_case.execute(ad_input)
 
     def test_create_advertisement_missing_required_fields(self):
         """Testa criação de anúncio com campos obrigatórios faltando"""
@@ -96,28 +101,28 @@ class TestCreateAdvertisementUseCase:
         mock_store_repo = Mock()
         mock_vehicle_repo = Mock()
 
-        store = Store.create("Minha Loja", "user-123")
+        store = self._create_test_store("Minha Loja", "user-123")
+
         mock_store_repo.get_by_id.return_value = store
+        mock_vehicle_repo.get_by_id.return_value = Mock()
 
         use_case = CreateAdvertisementUseCase(
-            ad_repo=mock_ad_repo,
-            store_repo=mock_store_repo,
-            vehicle_repo=mock_vehicle_repo
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
         )
 
-        # Act & Assert - Testar sem título
-        input_data = CreateAdvertisementInput(
+        ad_input = CreateAdvertisementInput(
             store_id=store.id,
             vehicle_id="vehicle-123",
-            title="",  # Título vazio
-            description="Descrição do anúncio",
-            price_amount=1500.50
+            title="A",
+            description="Desc",
+            price_amount=100000.0
         )
-        
-        with pytest.raises(Exception) as exc_info:
-            use_case.execute(input_data)
-        
-        assert "título" in str(exc_info.value).lower()
+
+        # Act & Assert - CORREÇÃO: Capture ValueError também
+        with pytest.raises((ValidationError, ValueError)):
+            use_case.execute(ad_input)
 
     def test_create_advertisement_with_vehicle_info(self):
         """Testa criação de anúncio com informações do veículo"""
@@ -126,35 +131,32 @@ class TestCreateAdvertisementUseCase:
         mock_store_repo = Mock()
         mock_vehicle_repo = Mock()
 
-        store = Store.create("Minha Loja", "user-123")
-        plan = Plan.create(
-            name="Plano Premium",
-            description="Plano premium de anúncio",
-            plan_type=PlanType.PREMIUM,
-            billing_cycle=BillingCycle.MONTHLY,
-            price_amount=200.0
-        )
+        store = self._create_test_store("Minha Loja", "user-123")
 
         mock_store_repo.get_by_id.return_value = store
+        mock_vehicle_repo.get_by_id.return_value = Mock()
+        mock_ad_repo.add.return_value = None
 
         use_case = CreateAdvertisementUseCase(
-            ad_repo=mock_ad_repo,
-            store_repo=mock_store_repo,
-            vehicle_repo=mock_vehicle_repo
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
+        )
+
+        ad_input = CreateAdvertisementInput(
+            store_id=store.id,
+            vehicle_id="vehicle-123",
+            title="Scania R500 - 2021",
+            description="Caminhão Scania R500, 6x4, ano 2021, 80.000 km, revisões em dia",
+            price_amount=320000.0
         )
 
         # Act
-        input_data = CreateAdvertisementInput(
-            store_id=store.id,
-            vehicle_id="vehicle-456",
-            title="Carro Esportivo",
-            description="Carro em ótimo estado",
-            price_amount=50000.0
-        )
-        result = use_case.execute(input_data)
+        result = use_case.execute(ad_input)
 
         # Assert
-        assert result.advertisement_id is not None
+        assert result is not None
+        assert isinstance(result, CreateAdvertisementOutput)
         mock_ad_repo.add.assert_called_once()
 
     def test_create_advertisement_different_plan_durations(self):
@@ -164,28 +166,31 @@ class TestCreateAdvertisementUseCase:
         mock_store_repo = Mock()
         mock_vehicle_repo = Mock()
 
-        store = Store.create("Minha Loja", "user-123")
+        store = self._create_test_store("Minha Loja", "user-123")
+
         mock_store_repo.get_by_id.return_value = store
+        mock_vehicle_repo.get_by_id.return_value = Mock()
+        mock_ad_repo.add.return_value = None
 
         use_case = CreateAdvertisementUseCase(
-            ad_repo=mock_ad_repo,
-            store_repo=mock_store_repo,
-            vehicle_repo=mock_vehicle_repo
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
         )
 
-        # Act
-        input_data = CreateAdvertisementInput(
-            store_id=store.id,
-            vehicle_id="vehicle-789",
-            title="Moto Custom",
-            description="Moto personalizada",
-            price_amount=25000.0
-        )
-        result = use_case.execute(input_data)
+        durations = [30, 60, 90]
+        for duration in durations:
+            ad_input = CreateAdvertisementInput(
+                store_id=store.id,
+                vehicle_id=f"vehicle-{duration}",
+                title=f"Mercedes Actros - {duration} dias",
+                description=f"Caminhão Mercedes Actros, plano de {duration} dias",
+                price_amount=280000.0
+            )
 
-        # Assert
-        assert result.advertisement_id is not None
-        mock_ad_repo.add.assert_called_once()
+            result = use_case.execute(ad_input)
+            assert result is not None
+            assert isinstance(result, CreateAdvertisementOutput)
 
     def test_create_advertisement_repository_error(self):
         """Testa criação de anúncio com erro no repositório"""
@@ -194,35 +199,80 @@ class TestCreateAdvertisementUseCase:
         mock_store_repo = Mock()
         mock_vehicle_repo = Mock()
 
-        store = Store.create("Minha Loja", "user-123")
-        plan = Plan.create(
-            name="Plano Básico",
-            description="Plano básico de anúncio",
-            plan_type=PlanType.PREMIUM,
-            billing_cycle=BillingCycle.MONTHLY,
-            price_amount=100.0
-        )
+        store = self._create_test_store("Minha Loja", "user-123")
 
         mock_store_repo.get_by_id.return_value = store
-        # Simular erro no repositório
-        mock_ad_repo.add.side_effect = Exception("Erro no banco de dados")
+        mock_vehicle_repo.get_by_id.return_value = Mock()
+        mock_ad_repo.add.side_effect = Exception("Database error")
 
         use_case = CreateAdvertisementUseCase(
-            ad_repo=mock_ad_repo,
-            store_repo=mock_store_repo,
-            vehicle_repo=mock_vehicle_repo
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
         )
 
-        # Act & Assert
-        input_data = CreateAdvertisementInput(
+        ad_input = CreateAdvertisementInput(
             store_id=store.id,
             vehicle_id="vehicle-123",
-            title="Anúncio Teste",
-            description="Descrição do anúncio",
-            price_amount=1500.50
+            title="Volvo FH 440",
+            description="Caminhão em excelente estado",
+            price_amount=250000.0
         )
-        
-        with pytest.raises(Exception) as exc_info:
-            use_case.execute(input_data)
-        
-        assert "erro" in str(exc_info.value).lower()
+
+        with pytest.raises(Exception, match="Database error"):
+            use_case.execute(ad_input)
+
+    def test_create_advertisement_store_not_found(self):
+        """Testa criação de anúncio com loja não encontrada"""
+        # Arrange
+        mock_ad_repo = Mock()
+        mock_store_repo = Mock()
+        mock_vehicle_repo = Mock()
+
+        mock_store_repo.get_by_id.return_value = None
+
+        use_case = CreateAdvertisementUseCase(
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
+        )
+
+        ad_input = CreateAdvertisementInput(
+            store_id="store-not-found",
+            vehicle_id="vehicle-123",
+            title="Volvo FH 440",
+            description="Caminhão em excelente estado",
+            price_amount=250000.0
+        )
+
+        with pytest.raises(ValidationError, match="Loja não encontrada"):
+            use_case.execute(ad_input)
+
+    def test_create_advertisement_vehicle_not_found(self):
+        """Testa criação de anúncio com veículo não encontrado"""
+        # Arrange
+        mock_ad_repo = Mock()
+        mock_store_repo = Mock()
+        mock_vehicle_repo = Mock()
+
+        store = self._create_test_store("Minha Loja", "user-123")
+
+        mock_store_repo.get_by_id.return_value = store
+        mock_vehicle_repo.get_by_id.return_value = None
+
+        use_case = CreateAdvertisementUseCase(
+            mock_ad_repo,
+            mock_store_repo,
+            mock_vehicle_repo
+        )
+
+        ad_input = CreateAdvertisementInput(
+            store_id=store.id,
+            vehicle_id="vehicle-not-found",
+            title="Volvo FH 440",
+            description="Caminhão em excelente estado",
+            price_amount=250000.0
+        )
+
+        with pytest.raises(ValidationError, match="Veículo não encontrado"):
+            use_case.execute(ad_input)

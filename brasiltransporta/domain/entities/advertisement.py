@@ -13,7 +13,6 @@ from brasiltransporta.domain.entities.enums import AdvertisementStatus
 class Advertisement:
     """Entidade Anúncio expandida mantendo compatibilidade"""
     
-    # ✅ CAMPOS SEM VALOR PADRÃO PRIMEIRO
     id: str
     store_id: str
     vehicle_id: str
@@ -21,7 +20,6 @@ class Advertisement:
     description: str
     price_amount: float
     
-    # ✅ CAMPOS COM VALOR PADRÃO DEPOIS
     price_currency: str = "BRL"
     status: AdvertisementStatus = AdvertisementStatus.DRAFT
     is_featured: bool = False

@@ -23,7 +23,8 @@ jobs:
         pip install poetry
         poetry install --with dev
         
+        
     - name: Run tests
       run: |
-            python -m pytest tests/ -v --tb=short -k "not e2e"
+            poetry run python -m pytest tests/ -v --tb=short -k "not e2e"
 

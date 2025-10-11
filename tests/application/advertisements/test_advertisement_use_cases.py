@@ -25,7 +25,8 @@ class TestCreateAdvertisementUseCase:
             description="Loja de veículos",
             address=address,
             categories=[StoreCategory.PARTS_STORE],
-            contact_phone="(11, cnpj="12.345.678/0001-90", cnpj="12.345.678/0001-90") 99999-9999"
+            contact_phone="(00) 00000-0000",
+            cnpj="12.345.678/0001-90"
         )
 
     def test_create_advertisement_success(self):

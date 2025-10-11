@@ -8,8 +8,8 @@ class GetStoreByIdUseCase:
     store_repo: StoreRepository
     session: any
 
-    def execute(self, store_id: UUID):
-        store = self.store_repo.get_by_id(store_id)
+    async def execute(self, store_id: UUID):
+        store = await self.store_repo.get_by_id(store_id)
         if not store:
             raise ValidationError("Loja não encontrada.")
         return store

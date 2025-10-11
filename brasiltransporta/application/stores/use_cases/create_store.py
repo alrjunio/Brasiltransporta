@@ -1,3 +1,4 @@
+# Volte o create_store.py para a versão ORIGINAL que aceita cnpj
 from dataclasses import dataclass
 from typing import Optional
 
@@ -28,30 +29,12 @@ class CreateStoreUseCase:
         self._stores = stores
 
     def execute(self, data: CreateStoreInput) -> CreateStoreOutput:
-        # 1) montar VO(s) opcionais
-        phone_vo = PhoneNumber(data.phone) if data.phone else None
-
-        if (data.latitude is None) ^ (data.longitude is None):
-            # XOR: só um foi informado → inválido (evita localização “meio definida”)
-            raise ValidationError("Para localização, informe latitude e longitude juntas ou nenhuma.")
-
-        location_vo = (
-            Location(latitude=data.latitude, longitude=data.longitude)
-            if data.latitude is not None and data.longitude is not None
-            else None
-        )
-
-        # 2) criar entidade de domínio (valida nome/cnpj no domínio)
-        store = Store.create(
+        # Usar create_simple que é compatível
+        store = Store.create_simple(
             name=data.name,
-            cnpj=data.cnpj,
             owner_id=data.owner_id,
-            phone=str(phone_vo) if phone_vo else None,
-            location=location_vo,
+            cnpj=data.cnpj
         )
-
-        # 3) persistir via contrato
+        
         self._stores.add(store)
-
-        # 4) retorno
         return CreateStoreOutput(store_id=store.id)

@@ -39,12 +39,12 @@ def create_store(
         response_model=StoreResponse,
         dependencies=[Depends(require_roles("seller", "admin"))],
         )
-def get_store_by_id(
+async def get_store_by_id(
     store_id: uuid.UUID,
     uc = Depends(get_store_by_id_uc),
 ):
     try:
-        s = uc.execute(store_id)
+        s = await uc.execute(store_id)
         return StoreResponse(
             id=s.id,
             name=s.name,

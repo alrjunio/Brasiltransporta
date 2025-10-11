@@ -14,13 +14,13 @@ from brasiltransporta.domain.errors.errors import ValidationError
 router = APIRouter(tags=["vehicles"])
 
 @router.post("/stores/{store_id}/vehicles", status_code=status.HTTP_201_CREATED)
-def create_vehicle(
+async def create_vehicle(
     store_id: uuid.UUID,
     payload: CreateVehicleRequest,
     uc = Depends(get_create_vehicle_uc),
 ):
     try:
-        new_id = uc.execute(
+        new_id = await uc.execute(
             CreateVehicleInput(
                 store_id=store_id,
                 brand=payload.brand,

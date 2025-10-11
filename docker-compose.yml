@@ -22,7 +22,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s  
+      start_period: 30s
 
   redis:
     image: redis:7
@@ -36,17 +36,23 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.12-management-alpine
     container_name: rabbitmq
+    hostname: rabbitmq
     ports:
-      - "5672:5672"    
-      - "15672:15672"  
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_ERLANG_COOKIE: "secret_cookie"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   fastapi_app:
     build:
@@ -55,8 +61,14 @@ services:
       target: runtime
     container_name: fastapi_app
     environment:
-      SECRET_KEY: ${SECRET_KEY}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here}
       JWT_ALGORITHM: "HS256"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test-key}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test-secret}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-brasiltransporta-test}
+      AWS_ENDPOINT: "https://s3.sa-east-1.amazonaws.com"
+      AWS_ENDPOINT_URL: "https://s3.sa-east-1.amazonaws.com"
       <<: *env-defaults
     depends_on:
       postgres_db:
@@ -68,8 +80,13 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
-
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+       
 
   test_runner:
     build:
@@ -79,6 +96,7 @@ services:
     container_name: test_runner
     environment:
       <<: *env-defaults
+      SECRET_KEY: test-secret-key
     depends_on:
       postgres_db:
         condition: service_healthy
@@ -86,7 +104,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    command: ["pytest", "-v", "--tb=long", "-x"]
+    command: ["pytest", "-v", "--tb=short", "-x", "--disable-warnings"]
 
 volumes:
   brasiltransporta_pgdata:
+  rabbitmq_data:

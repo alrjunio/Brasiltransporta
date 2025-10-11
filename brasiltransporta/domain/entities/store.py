@@ -7,10 +7,12 @@ from uuid import uuid4
 from brasiltransporta.domain.entities.address import Address
 from brasiltransporta.domain.entities.enums import StoreCategory
 
+# No arquivo: ./brasiltransporta/domain/entities/store.py
+
 @dataclass
 class Store:
     """Entidade Loja expandida para veículos pesados"""
-    
+
     # Campos sem valor padrão PRIMEIRO
     id: str
     name: str
@@ -19,7 +21,8 @@ class Store:
     address: Address
     categories: List[StoreCategory]
     contact_phone: str
-    
+    cnpj: str  # ✅ ADICIONAR ESTE CAMPO
+
     # Campos com valor padrão DEPOIS
     is_active: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -27,7 +30,7 @@ class Store:
 
     @classmethod
     def create(cls, name: str, owner_id: str, description: str, address: Address,
-               categories: List[StoreCategory], contact_phone: str) -> "Store":
+               categories: List[StoreCategory], contact_phone: str, cnpj: str) -> "Store":  # ✅ ADD CNPJ
         return cls(
             id=str(uuid4()),
             name=name.strip(),
@@ -36,22 +39,30 @@ class Store:
             address=address,
             categories=categories,
             contact_phone=contact_phone.strip(),
+            cnpj=cnpj.strip(),  # ✅ ADD CNPJ
             is_active=True
         )
 
     @classmethod
-    def create_simple(cls, name: str, owner_id: str) -> "Store":
+    def create_simple(cls, name: str, owner_id: str, cnpj: str) -> "Store":  # ✅ ADD CNPJ
         """Método simplificado para compatibilidade com testes"""
-        address = Address.create("", "", "", "")
+        address = Address.create(
+            street="Rua Principal",
+            city="São Paulo", 
+            state="SP",
+            zip_code="01234-567"
+        )
         return cls.create(
             name=name,
             owner_id=owner_id,
             description="Loja de veículos",
             address=address,
             categories=[StoreCategory.PARTS_STORE],
-            contact_phone="(00) 00000-0000"
+            contact_phone="(11) 99999-9999",
+            cnpj=cnpj  # ✅ ADD CNPJ
         )
-
+        
+        
     def update(self, name: Optional[str] = None, description: Optional[str] = None,
                address: Optional[Address] = None, categories: Optional[List[StoreCategory]] = None,
                contact_phone: Optional[str] = None) -> None:

@@ -25,7 +25,7 @@ class CreateVehicleUseCase:
     def __init__(self, vehicle_repo) -> None:
         self._repo = vehicle_repo
 
-    def execute(self, data: CreateVehicleInput) -> CreateVehicleOutput:
+    async def execute(self, data: CreateVehicleInput) -> CreateVehicleOutput:
         # Validações
         current_year = datetime.now().year
         if not (1950 <= data.year <= current_year + 1):
@@ -36,10 +36,11 @@ class CreateVehicleUseCase:
             raise ValidationError("Placa inválida. Use formato Mercosul: ABC1D23")
 
         # Verificar se placa já existe
-        if self._repo.get_by_plate(plate):
-            raise ValidationError("Placa já cadastrada.")
+        existing_vehicle = await self._repo.get_by_plate(plate)
+        if existing_vehicle:
+            raise ValidationError(f"Já existe um veículo com a placa {plate}")
 
-        # Criar veículo
+        # Criar veículo 
         vehicle = Vehicle.create(
             store_id=str(data.store_id),
             brand=data.brand,
@@ -49,6 +50,6 @@ class CreateVehicleUseCase:
         )
 
         # Persistir
-        self._repo.add(vehicle)
-
+        await self._repo.add(vehicle)
+    
         return CreateVehicleOutput(vehicle_id=vehicle.id)

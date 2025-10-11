@@ -14,6 +14,8 @@ from brasiltransporta.presentation.api.controllers.auth import router as auth_ro
 from brasiltransporta.domain.errors.errors import ValidationError, DomainError, SecurityAlertError
 from brasiltransporta.infrastructure.security.refresh_token_service import RefreshTokenService
 from brasiltransporta.infrastructure.config.settings import AppSettings
+from brasiltransporta.presentation.api.controllers.file_uploads import router as storage_router
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="BrasilTransporta API", version="0.1.0")
@@ -91,7 +93,9 @@ def create_app() -> FastAPI:
     app.include_router(transactions_router)
     app.include_router(plans_router)
     app.include_router(advertisements_router)   
-    app.include_router(auth_router)  
+    app.include_router(auth_router)
+    app.include_router(storage_router)
+  
     
     return app
 

@@ -1,6 +1,7 @@
 ﻿# brasiltransporta/infrastructure/config/settings.py
 from typing import Optional
-from pydantic_settings import BaseSettings, SettingsConfigDict # type: ignore
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class AuthSettings(BaseSettings):
@@ -9,14 +10,11 @@ class AuthSettings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
-
-    # Security
     bcrypt_rounds: int = 12
 
-    # Pydantic v2
     model_config = SettingsConfigDict(
         env_prefix="AUTH_",
-        env_file=None,          # evita capturar variáveis de outras seções
+        env_file=".env",
         extra="ignore",
         env_aliases={
             "secret_key": ["AUTH_SECRET_KEY", "SECRET_KEY"],
@@ -36,9 +34,8 @@ class DatabaseSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="DB_",
-        env_file=None,
+        env_file=".env",
         extra="ignore",
-        # Compatibilidade com nomes comuns/antigos
         env_aliases={
             "url": ["DB_URL", "DATABASE_URL"],
             "echo": ["DB_ECHO"],
@@ -56,7 +53,7 @@ class RedisSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="REDIS_",
-        env_file=None,
+        env_file=".env",
         extra="ignore",
         env_aliases={
             "url": ["REDIS_URL", "redis_url"],
@@ -68,12 +65,52 @@ class RedisSettings(BaseSettings):
     )
 
 
+class S3Settings(BaseSettings):
+    """Configurações do Amazon S3"""
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_region: str = "sa-east-1"
+    s3_bucket_name: str = "brasiltransporta-uploads"
+    max_file_size_images: int = 5242880  # 5MB
+    max_file_size_videos: int = 52428800  # 50MB
+    max_images_per_ad: int = 10
+    max_videos_per_ad: int = 3
+
+    model_config = SettingsConfigDict(
+        env_prefix="AWS_",
+        env_file=".env",
+        extra="ignore",
+        env_aliases={
+            "aws_access_key_id": ["AWS_ACCESS_KEY_ID"],
+            "aws_secret_access_key": ["AWS_SECRET_ACCESS_KEY"],
+            "aws_region": ["AWS_REGION"],
+            "s3_bucket_name": ["S3_BUCKET_NAME"],
+            "max_file_size_images": ["MAX_FILE_SIZE_IMAGES"],
+            "max_file_size_videos": ["MAX_FILE_SIZE_VIDEOS"],
+            "max_images_per_ad": ["MAX_IMAGES_PER_AD"],
+            "max_videos_per_ad": ["MAX_VIDEOS_PER_AD"],
+        },
+        case_sensitive=False,
+    )
+
+
 class AppSettings(BaseSettings):
-    """Configurações principais da aplicação"""
+    """Configurações principais da aplicação usando Pydantic"""
     environment: str = "development"
     debug: bool = True
 
-    # Sub-configs (quem lê .env é o AppSettings; os sub-settings não leem .env diretamente)
-    auth: AuthSettings = AuthSettings()
-    database: DatabaseSettings = DatabaseSettings()
-    redis: RedisSettings = RedisSettings()
+    # Sub-configs - usando Field com default_factory para evitar problemas de mutabilidade
+    auth: AuthSettings = Field(default_factory=AuthSettings)
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    redis: RedisSettings = Field(default_factory=RedisSettings)
+    s3: S3Settings = Field(default_factory=S3Settings)
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+
+# Instância global das configurações
+settings = AppSettings()

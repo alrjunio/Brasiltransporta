@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from datetime import datetime
+from jose import JWTError
 
 # Import dos schemas
 from brasiltransporta.presentation.api.models.requests.auth_request import (
@@ -55,13 +56,13 @@ async def refresh_token(
     request: Request,
     jwt_service: JWTService = Depends(get_jwt_service),
     user_service: UserService = Depends(get_user_service),
-    refresh_service: RefreshTokenService = Depends(get_refresh_token_service)
+    refresh_service = Depends(get_refresh_token_service),
 ):
-    """Refresh access token using refresh token with rotation"""
+    """Refresh access token com rotação de refresh token"""
     try:
         print("🔄 Iniciando refresh token...")
-        
-        # Verify refresh token signature first
+
+        # 1) Verifica assinatura/expiração e se é tipo 'refresh'
         payload = jwt_service.verify_refresh_token(refresh_data.refresh_token)
         if not payload:
             print("❌ Refresh token signature inválida")
@@ -69,58 +70,68 @@ async def refresh_token(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token signature"
             )
-        
+
         user_id = payload.get("sub")
         if not user_id:
-            print("❌ Payload do refresh token inválido")
+            print("❌ Payload do refresh token sem 'sub'")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token payload"
             )
-        
+
         print(f"🔍 Verificando refresh token para usuário: {user_id}")
-        
-        # Verify and rotate refresh token in Redis
+
+        # 2) Verifica no Redis e faz rotação
         is_valid, token_family, error = refresh_service.verify_and_rotate(
             user_id, refresh_data.refresh_token
         )
-        
         if not is_valid:
             print(f"❌ Refresh token inválido: {error}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=error or "Invalid refresh token"
             )
-        
-        print("✅ Refresh token válido, gerando novos tokens...")
-        
-        # Generate new tokens
-        access_token = jwt_service.create_access_token(
-            claims={"sub": user_id, "email": payload.get("email", "unknown")}
+
+        print("✅ Refresh token válido, carregando dados do usuário...")
+
+        # 3) Carrega dados do usuário (email/roles atuais)
+        user = await user_service.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=401, detail="Usuário não encontrado")
+
+        email = getattr(user, "email", None)
+        roles = getattr(user, "roles", []) or []
+
+        # 4) Gera novos tokens
+        access_token = jwt_service.generate_access_token(
+            sub=user_id,
+            email=email,
+            roles=roles,
         )
-        
-        new_refresh_token = jwt_service.create_refresh_token(
-            claims={"sub": user_id}
+        new_refresh_token = jwt_service.generate_refresh_token(
+            sub=user_id
         )
-        
-        # Store new refresh token with same token family
+
+        # 5) Persiste novo refresh na mesma família, se houver
         if token_family:
             refresh_service.store_refresh_token(user_id, new_refresh_token, token_family)
         else:
-            # Fallback: criar nova família de tokens
             refresh_service.store_refresh_token(user_id, new_refresh_token)
-        
+
         print("✅ Novos tokens gerados e armazenados")
-        
+
         return Token(
             access_token=access_token,
             refresh_token=new_refresh_token,
-            token_type="bearer"
+            token_type="bearer",
         )
-        
+
     except SecurityAlertError as e:
         print(f"🚨 Alerta de segurança: {e}")
         raise
+    except JWTError as e:
+        print(f"❌ JWT inválido: {e}")
+        raise HTTPException(status_code=401, detail="Refresh token inválido")
     except HTTPException:
         raise
     except Exception as e:
@@ -138,7 +149,6 @@ async def login(
     jwt_service: JWTService = Depends(get_jwt_service),
     refresh_service: RefreshTokenService = Depends(get_refresh_token_service)
 ):
-    """Login user and generate tokens with refresh token storage"""
     try:
         print(f"🔐 Tentando login para: {login_data.email}")
         
@@ -155,15 +165,27 @@ async def login(
         
         print(f"✅ Login bem-sucedido para usuário: {user.id}")
         
-        # Generate tokens
-        user_id = str(getattr(user, 'id', 'unknown'))
-        user_email = getattr(user, 'email', 'unknown')
+        # ✅ Buscar roles do usuário
+        user_roles = getattr(user, 'roles', [])
+        print(f"🎭 Roles do usuário: {user_roles}")
         
-        access_token = jwt_service.create_access_token(
-            claims={"sub": user_id, "email": user_email}
+        # ✅ CORREÇÃO: Converter Email object para string
+        user_id = str(getattr(user, 'id', 'unknown'))
+        
+        # ✅ CORREÇÃO CRÍTICA: Extrair o valor do objeto Email
+        user_email_obj = getattr(user, 'email', 'unknown')
+        user_email = str(user_email_obj)  # ← CONVERTER PARA STRING!
+        
+        print(f"📧 Email convertido: {user_email}")
+        
+        # ✅ Gerar tokens
+        access_token = jwt_service.generate_access_token(
+            sub=user_id,
+            email=user_email,  # ← AGORA É UMA STRING!
+            roles=user_roles
         )
-        refresh_token = jwt_service.create_refresh_token(
-            claims={"sub": user_id}
+        refresh_token = jwt_service.generate_refresh_token(
+            sub=user_id
         )
         
         # Store refresh token in Redis
@@ -188,7 +210,8 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during login"
         )
-
+        
+                
 @router.post("/logout")
 async def logout(
     request: Request,
@@ -319,9 +342,14 @@ async def phone_login(
         # Gera tokens (mesmo padrão do login por email)
         user_id = str(user.id)
         user_email = str(user.email)
+        user_roles = getattr(user, 'roles', [])
         
         access_token = jwt_service.create_access_token(
-            claims={"sub": user_id, "email": user_email}
+            claims={
+                "sub": user_id, 
+                "email": user_email,
+                "roles": user_roles  # ← AGORA INCLUI OS ROLES!
+            }
         )
         refresh_token = jwt_service.create_refresh_token(
             claims={"sub": user_id}

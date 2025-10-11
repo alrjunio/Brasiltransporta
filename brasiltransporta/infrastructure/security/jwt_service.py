@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from jose import jwt, JWTError
 
-# Tentamos obter configurações sem “quebrar” se algum campo não existir
+# Tentamos importar AppSettings, mas não obrigamos a existir.
 try:
     from brasiltransporta.infrastructure.config.settings import AppSettings
-except Exception:  # pragma: no cover
-    AppSettings = None  # type: ignore[misc]
+except Exception:
+    AppSettings = None  # type: ignore
 
 
 def _utcnow() -> datetime:
@@ -19,197 +19,212 @@ def _utcnow() -> datetime:
 
 class JWTService:
     """
-    Serviço de emissão e verificação de JWT com hardening:
-      - iss, aud opcionais (se configurados)
-      - iat, nbf, exp
-      - jti
-      - (leeway removido do decode por incompatibilidade da lib no ambiente)
+    Serviço de criação e verificação de JWTs (access e refresh).
+    Não possui dependência de repositórios. Apenas assina e valida tokens.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        secret_key: str,
+        algorithm: str = "HS256",
+        access_token_exp_minutes: int = 60,
+        refresh_token_exp_days: int = 7,
+        issuer: Optional[str] = None,
+        audience: Optional[str] = None,
+    ) -> None:
+        if not secret_key:
+            raise ValueError("secret_key é obrigatório")
+        self._secret = secret_key
+        self._alg = algorithm or "HS256"
+        self._access_minutes = int(access_token_exp_minutes or 60)
+        self._refresh_days = int(refresh_token_exp_days or 7)
+        self._issuer = issuer
+        self._audience = audience
+
+    # ---------- Fábricas úteis ----------
+
+    @classmethod
+    def from_settings(cls) -> "JWTService":
+        """
+        Tenta construir o service a partir do AppSettings, se existir.
+        Se não existir, cai em defaults seguros.
+        """
         defaults = {
-            "secret_key": "change-me-in-production",
+            "secret_key": "change-me-in-prod",
             "algorithm": "HS256",
-            "access_minutes": 30,
-            "refresh_days": 7,
-            "issuer": None,          # ex.: "brasiltransporta"
-            "audience": None,        # ex.: "brasiltransporta.api"
-            "leeway_seconds": 30,    # mantido, mas não passado ao decode
+            "access_token_exp_minutes": 60,
+            "refresh_token_exp_days": 7,
+            "issuer": None,
+            "audience": None,
         }
 
-        # ✅ Primeiro, tenta pegar diretamente do ambiente
-        import os
-        env_secret = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY")
+        if AppSettings is None:
+            return cls(**defaults)
 
-        if AppSettings is not None:
-            app = AppSettings()
-            auth = getattr(app, "auth", None)
+        try:
+            settings = AppSettings()  # type: ignore
+            auth = getattr(settings, "auth", None)
+            app = getattr(settings, "app", None)
 
-            # ✅ Prioriza o segredo do ambiente
-            self._secret = (
-                env_secret
-                or getattr(auth, "secret_key", None)
+            secret = (
+                getattr(auth, "secret_key", None)
                 or getattr(app, "secret_key", None)
                 or defaults["secret_key"]
             )
-            self._alg = (
+            algorithm = (
                 getattr(auth, "algorithm", None)
                 or getattr(app, "algorithm", None)
                 or defaults["algorithm"]
             )
-            self._access_minutes = int(
+            access_minutes = int(
                 getattr(auth, "access_token_exp_minutes", None)
                 or getattr(app, "access_token_exp_minutes", None)
-                or defaults["access_minutes"]
+                or defaults["access_token_exp_minutes"]
             )
-            self._refresh_days = int(
+            refresh_days = int(
                 getattr(auth, "refresh_token_exp_days", None)
                 or getattr(app, "refresh_token_exp_days", None)
-                or defaults["refresh_days"]
+                or defaults["refresh_token_exp_days"]
             )
-            self._issuer: Optional[str] = (
+            issuer = (
                 getattr(auth, "issuer", None)
                 or getattr(app, "issuer", None)
                 or defaults["issuer"]
             )
-            self._audience: Optional[str] = (
+            audience = (
                 getattr(auth, "audience", None)
                 or getattr(app, "audience", None)
                 or defaults["audience"]
             )
-            self._leeway = int(
-                getattr(auth, "leeway_seconds", None)
-                or getattr(app, "leeway_seconds", None)
-                or defaults["leeway_seconds"]
+
+            return cls(
+                secret_key=secret,
+                algorithm=algorithm,
+                access_token_exp_minutes=access_minutes,
+                refresh_token_exp_days=refresh_days,
+                issuer=issuer,
+                audience=audience,
             )
-        else:
-            # fallback total se AppSettings falhar
-            self._secret = env_secret or defaults["secret_key"]
-            self._alg = defaults["algorithm"]
-            self._access_minutes = defaults["access_minutes"]
-            self._refresh_days = defaults["refresh_days"]
-            self._issuer = defaults["issuer"]
-            self._audience = defaults["audience"]
-            self._leeway = defaults["leeway_seconds"]
-
-    def verify_refresh_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify refresh token specifically - check type and signature"""
-        try:
-            payload = self.verify_token(token)  # Usa o método existente
-            if payload and payload.get("type") == "refresh":
-                return payload
-            return None
         except Exception:
-            return None
+            # Se algo falhar, volte para defaults (útil em dev)
+            return cls(**defaults)
 
-    def verify_token_with_type(self, token: str, expected_type: str) -> Optional[Dict[str, Any]]:
-        """
-        Verifica token e valida o tipo esperado
-        """
-        payload = self.verify_token(token)
-        if not payload:
-            return None
-            
-        token_type = payload.get("type")
-        if token_type != expected_type:
-            return None
-            
-        return payload
-    
-    def create_refresh_token_with_family(self, claims: Dict[str, Any], token_family: str) -> str:
-        """
-        Cria refresh token incluindo a família para rastreamento
-        """
-        claims_with_family = claims.copy()
-        claims_with_family["token_family"] = token_family
-        return self.create_refresh_token(claims_with_family)
+    # ---------- Criação de tokens ----------
 
-    # ---------------------------
-    # Public API
-    # ---------------------------
-
-    def create_access_token(self, claims: Dict[str, Any]) -> str:
-        return self._create_token(claims=claims, minutes=self._access_minutes, token_type="access")
-
-    def create_refresh_token(self, claims: Dict[str, Any]) -> str:
-        return self._create_token(claims=claims, days=self._refresh_days, token_type="refresh")
-
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """
-        Verifica assinatura e validade (exp/nbf/iat) e, se configurados, iss/aud.
-        Retorna o payload (dict) se válido; caso contrário, retorna None.
-        """
-        if not token or not isinstance(token, str):
-            return None
-
-        options = {
-            "require": ["exp", "iat", "nbf", "jti", "type"],
-            "verify_exp": True,
-            "verify_signature": True,
-        }
-
-        kwargs: Dict[str, Any] = {
-            "algorithms": [self._alg],
-            "options": options,
-            # REMOVIDO: 'leeway' — a lib do ambiente não aceita esse kwarg
-        }
-        if self._issuer:
-            kwargs["issuer"] = self._issuer
-        if self._audience:
-            kwargs["audience"] = self._audience
-
-        try:
-            data = jwt.decode(token, self._secret, **kwargs)
-            if "email" in data and not isinstance(data["email"], str):
-                data["email"] = str(data["email"])
-            return data
-        except Exception:
-            # PyJWTError / JOSEError / etc -> inválido
-            return None
-
-    # ---------------------------
-    # Internals
-    # ---------------------------
-
-    def _create_token(
+    def generate_access_token(
         self,
         *,
-        claims: Dict[str, Any],
-        token_type: str,
-        minutes: Optional[int] = None,
-        days: Optional[int] = None,
+        sub: str,
+        email: Optional[str] = None,
+        roles: Optional[List[str]] = None,
+        extra_claims: Optional[Dict[str, Any]] = None,
     ) -> str:
+        """
+        Gera um access token curto (minutos).
+        Claims padrão: sub, type="access", iat, nbf, exp, jti, (email, roles se informados), (iss/aud se configurados).
+        """
         now = _utcnow()
-
-        sub = claims.get("sub")
-        email = claims.get("email")
-        roles = claims.get("roles", [])
+        exp = now + timedelta(minutes=self._access_minutes)
 
         payload: Dict[str, Any] = {
-            "sub": str(sub) if sub is not None else None,
-            "email": str(email) if email is not None else None,
-            "roles": list(roles) if isinstance(roles, (list, tuple)) else [],
-            "type": token_type,
+            "sub": sub,
+            "type": "access",
             "iat": int(now.timestamp()),
             "nbf": int(now.timestamp()),
+            "exp": int(exp.timestamp()),
             "jti": str(uuid.uuid4()),
         }
-
-        if minutes is not None:
-            exp = now + timedelta(minutes=minutes)
-        elif days is not None:
-            exp = now + timedelta(days=days)
-        else:
-            exp = now + timedelta(minutes=30)
-
-        payload["exp"] = int(exp.timestamp())
-
+        if email:
+            payload["email"] = email
+        if roles:
+            payload["roles"] = roles
         if self._issuer:
             payload["iss"] = self._issuer
         if self._audience:
             payload["aud"] = self._audience
+        if extra_claims:
+            payload.update(extra_claims)
 
-        payload = {k: v for k, v in payload.items() if v is not None}
+        return jwt.encode(payload, self._secret, algorithm=self._alg)
 
-        token = jwt.encode(payload, self._secret, algorithm=self._alg)
-        return token
+    def generate_refresh_token(
+        self,
+        *,
+        sub: str,
+        extra_claims: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Gera um refresh token longo (dias). NÃO coloca email/roles (opcional), pois não é necessário.
+        """
+        now = _utcnow()
+        exp = now + timedelta(days=self._refresh_days)
+
+        payload: Dict[str, Any] = {
+            "sub": sub,
+            "type": "refresh",
+            "iat": int(now.timestamp()),
+            "nbf": int(now.timestamp()),
+            "exp": int(exp.timestamp()),
+            "jti": str(uuid.uuid4()),
+        }
+        if self._issuer:
+            payload["iss"] = self._issuer
+        if self._audience:
+            payload["aud"] = self._audience
+        if extra_claims:
+            payload.update(extra_claims)
+
+        return jwt.encode(payload, self._secret, algorithm=self._alg)
+
+    # ---------- Verificação/decodificação ----------
+
+    def decode_token(self, token: str) -> Dict[str, Any]:
+        """
+        Decodifica e retorna as claims **sem** forçar audience/issuer (a menos que estejam configurados).
+        Levanta JWTError em caso de falha.
+        """
+        options = {
+            "verify_signature": True,
+            "verify_exp": True,
+            "verify_iat": True,
+            "verify_nbf": True,
+        }
+        kwargs: Dict[str, Any] = {
+            "key": self._secret,
+            "algorithms": [self._alg],
+            "options": options,
+        }
+        if self._audience:
+            kwargs["audience"] = self._audience
+        if self._issuer:
+            kwargs["issuer"] = self._issuer
+
+        return jwt.decode(token, **kwargs)  # type: ignore[arg-type]
+
+    def verify_access_token(self, token: str) -> Dict[str, Any]:
+        """
+        Verifica se é um token do tipo access.
+        """
+        try:
+            payload = self.decode_token(token)
+            if payload.get("type") != "access":
+                raise JWTError("Tipo de token inválido (esperado 'access').")
+            return payload
+        except JWTError:
+            raise
+        except Exception as e:
+            raise JWTError(str(e))
+
+    def verify_refresh_token(self, token: str) -> Dict[str, Any]:
+        """
+        Verifica se é um token do tipo refresh.
+        """
+        try:
+            payload = self.decode_token(token)
+            if payload.get("type") != "refresh":
+                raise JWTError("Tipo de token inválido (esperado 'refresh').")
+            return payload
+        except JWTError:
+            raise
+        except Exception as e:
+            raise JWTError(str(e))

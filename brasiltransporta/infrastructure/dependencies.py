@@ -47,7 +47,7 @@ def get_refresh_token_service(request: Request) -> Optional[RefreshTokenService]
 
 def get_jwt_service() -> JWTService:
     """Dependency para JWTService"""
-    return JWTService()
+    return JWTService.from_settings()
 
 def get_password_hasher() -> BcryptPasswordHasher:
     """Dependency para PasswordHasher"""

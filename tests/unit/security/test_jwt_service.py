@@ -23,7 +23,7 @@ class TestJWTService:
     def test_create_access_token_success(self):
         """Testa criação bem-sucedida de access token"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {
             "sub": "user-123",
             "email": "test@example.com", 
@@ -52,7 +52,7 @@ class TestJWTService:
     def test_create_refresh_token_success(self):
         """Testa criação bem-sucedida de refresh token"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {
             "sub": "user-123",
             "email": "test@example.com",
@@ -74,8 +74,8 @@ class TestJWTService:
     def test_verify_token_invalid_signature(self):
         """Testa verificação de token com assinatura inválida"""
         # Arrange
-        service1 = JWTService()
-        service2 = JWTService()
+        service1 = JWTService(secret_key="test-key")
+        service2 = JWTService(secret_key="test-key")
         
         # Criar token com um serviço
         claims = {"sub": "user-123", "email": "test@example.com", "roles": []}
@@ -92,7 +92,7 @@ class TestJWTService:
     def test_verify_token_expired(self):
         """Testa verificação de token expirado - VERSÃO CORRIGIDA"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         
         # Mock do verify_token para simular token expirado
         with patch.object(service, 'verify_token', return_value=None):
@@ -105,7 +105,7 @@ class TestJWTService:
     def test_verify_token_not_yet_valid(self):
         """Testa verificação de token com nbf no futuro - VERSÃO CORRIGIDA"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         
         # Mock do verify_token para simular token não válido ainda
         with patch.object(service, 'verify_token', return_value=None):
@@ -118,7 +118,7 @@ class TestJWTService:
     def test_verify_refresh_token_success(self):
         """Testa verificação específica de refresh token"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         refresh_token = service.create_refresh_token(claims)
         
@@ -133,7 +133,7 @@ class TestJWTService:
     def test_verify_refresh_token_wrong_type(self):
         """Testa que access token não é aceito como refresh token"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         access_token = service.create_access_token(claims)
         
@@ -146,7 +146,7 @@ class TestJWTService:
     def test_verify_token_with_type_success(self):
         """Testa verificação com tipo específico bem-sucedida"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         access_token = service.create_access_token(claims)
         
@@ -160,7 +160,7 @@ class TestJWTService:
     def test_verify_token_with_type_wrong_type(self):
         """Testa verificação com tipo específico falhando"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         access_token = service.create_access_token(claims)
         
@@ -173,7 +173,7 @@ class TestJWTService:
     def test_create_refresh_token_with_family(self):
         """Testa criação de refresh token com família - VERSÃO CORRIGIDA"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         token_family = "family-123"
         
@@ -191,7 +191,7 @@ class TestJWTService:
     def test_verify_token_malformed(self):
         """Testa verificação de token malformado"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         malformed_tokens = [
             "",
             "invalid.token.here",
@@ -209,7 +209,7 @@ class TestJWTService:
     def test_jti_uniqueness(self):
         """Testa que cada token tem JTI único"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         
         # Act
@@ -231,7 +231,7 @@ class TestJWTService:
         os.environ['JWT_SECRET'] = env_secret
         
         # Act
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         
         # Assert
         assert service._secret == env_secret
@@ -243,7 +243,7 @@ class TestJWTService:
         """Testa inclusão de issuer e audience quando configurados"""
         # Arrange
         with patch.object(JWTService, '__init__', lambda self: None):
-            service = JWTService()
+            service = JWTService(secret_key="test-key")
             service._secret = "test-secret"
             service._alg = "HS256"
             service._access_minutes = 30
@@ -266,7 +266,7 @@ class TestJWTService:
     def test_required_claims_present(self):
         """Testa que todas as claims obrigatórias estão presentes"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": "test@example.com", "roles": ["buyer"]}
         
         # Act
@@ -281,7 +281,7 @@ class TestJWTService:
     def test_email_string_conversion(self):
         """Testa que email é sempre convertido para string"""
         # Arrange
-        service = JWTService()
+        service = JWTService(secret_key="test-key")
         claims = {"sub": "user-123", "email": 12345, "roles": ["buyer"]}  # Email como número
         
         # Act
